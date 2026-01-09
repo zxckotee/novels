@@ -1,0 +1,215 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "all": "All",
+    "more": "More",
+    "showMore": "Show more",
+    "seeAll": "See all",
+    "back": "Back",
+    "next": "Next",
+    "prev": "Previous",
+    "chapter": "Chapter",
+    "chapters": "Chapters",
+    "views": "Views",
+    "rating": "Rating",
+    "new": "New"
+  },
+  "nav": {
+    "home": "Home",
+    "catalog": "Catalog",
+    "bookmarks": "Bookmarks",
+    "voting": "Voting",
+    "profile": "Profile",
+    "admin": "Admin",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout"
+  },
+  "home": {
+    "hero": {
+      "title": "Read the best novels",
+      "subtitle": "Thousands of translated works in 7 languages"
+    },
+    "sections": {
+      "latestUpdates": "Latest Updates",
+      "popular": "Popular",
+      "trending": "Trending",
+      "newReleases": "New Releases",
+      "topRated": "Top Rated",
+      "recommended": "Recommended",
+      "collections": "Collections"
+    },
+    "voting": {
+      "title": "Vote for a Novel",
+      "description": "Choose which book we translate next",
+      "button": "Vote"
+    },
+    "propose": {
+      "title": "Propose a Novel",
+      "description": "Add a book to the translation queue",
+      "button": "Propose"
+    }
+  },
+  "novel": {
+    "status": {
+      "ongoing": "Ongoing",
+      "completed": "Completed",
+      "paused": "On Hiatus",
+      "dropped": "Dropped"
+    },
+    "tabs": {
+      "description": "Description",
+      "chapters": "Chapters",
+      "comments": "Comments"
+    },
+    "info": {
+      "author": "Author",
+      "year": "Year",
+      "originalChapters": "Original chapters",
+      "translatedChapters": "Translated chapters",
+      "genres": "Genres",
+      "tags": "Tags",
+      "altNames": "Alternative names"
+    },
+    "actions": {
+      "read": "Read",
+      "continue": "Continue",
+      "addBookmark": "Add to Bookmarks",
+      "removeBookmark": "Remove from Bookmarks",
+      "vote": "Vote",
+      "rate": "Rate",
+      "share": "Share"
+    }
+  },
+  "reader": {
+    "chapter": "Chapter {number}",
+    "navigation": {
+      "prev": "Previous Chapter",
+      "next": "Next Chapter",
+      "toc": "Table of Contents"
+    },
+    "settings": {
+      "title": "Reading Settings",
+      "fontSize": "Font Size",
+      "theme": "Theme",
+      "lineHeight": "Line Height"
+    },
+    "progress": {
+      "reading": "Reading",
+      "saved": "Progress saved"
+    }
+  },
+  "catalog": {
+    "title": "Catalog",
+    "filters": {
+      "genres": "Genres",
+      "status": "Status",
+      "sortBy": "Sort by",
+      "clear": "Clear"
+    },
+    "sort": {
+      "newest": "Newest",
+      "updated": "Recently Updated",
+      "popular": "Most Popular",
+      "rating": "Highest Rated",
+      "bookmarks": "Most Bookmarked"
+    },
+    "noResults": "No results found",
+    "resultsCount": "{count} novels found"
+  },
+  "bookmarks": {
+    "title": "My Bookmarks",
+    "lists": {
+      "reading": "Reading",
+      "planned": "Plan to Read",
+      "dropped": "Dropped",
+      "completed": "Completed",
+      "favorites": "Favorites"
+    },
+    "empty": "No bookmarks in this list",
+    "continueReading": "Continue",
+    "progress": "Progress: {current} / {total}"
+  },
+  "profile": {
+    "title": "Profile",
+    "stats": {
+      "chaptersRead": "Chapters Read",
+      "readingTime": "Reading Time",
+      "comments": "Comments",
+      "level": "Level"
+    },
+    "tabs": {
+      "bookmarks": "Bookmarks",
+      "comments": "Comments",
+      "achievements": "Achievements",
+      "settings": "Settings"
+    },
+    "subscription": {
+      "free": "Free",
+      "premium": "Premium",
+      "upgrade": "Upgrade"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Login",
+      "noAccount": "Don't have an account?",
+      "register": "Register"
+    },
+    "register": {
+      "title": "Register",
+      "displayName": "Display Name",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Create Account",
+      "hasAccount": "Already have an account?",
+      "login": "Login"
+    },
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "emailExists": "Email already in use",
+      "passwordMismatch": "Passwords don't match",
+      "weakPassword": "Password must be at least 8 characters"
+    }
+  },
+  "comments": {
+    "title": "Comments",
+    "write": "Write a comment...",
+    "submit": "Submit",
+    "reply": "Reply",
+    "delete": "Delete",
+    "edit": "Edit",
+    "report": "Report",
+    "spoiler": "Spoiler",
+    "empty": "No comments yet",
+    "loadMore": "Load more"
+  },
+  "errors": {
+    "notFound": "Page not found",
+    "serverError": "Server error",
+    "unauthorized": "Authorization required",
+    "forbidden": "Access denied",
+    "goHome": "Go Home"
+  },
+  "wallet": {
+    "title": "Wallet",
+    "dailyVotes": "Daily Votes",
+    "novelRequests": "Novel Requests",
+    "translationTickets": "Translation Tickets"
+  }
+}

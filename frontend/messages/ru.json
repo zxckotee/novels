@@ -1,0 +1,290 @@
+{
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Произошла ошибка",
+    "retry": "Повторить",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "create": "Создать",
+    "search": "Поиск",
+    "filter": "Фильтр",
+    "sort": "Сортировка",
+    "all": "Все",
+    "more": "Ещё",
+    "showMore": "Показать ещё",
+    "seeAll": "Смотреть все",
+    "back": "Назад",
+    "next": "Далее",
+    "prev": "Назад",
+    "chapter": "Глава",
+    "chapters": "Главы",
+    "views": "Просмотры",
+    "rating": "Рейтинг",
+    "new": "Новое"
+  },
+  "nav": {
+    "home": "Главная",
+    "catalog": "Каталог",
+    "bookmarks": "Закладки",
+    "voting": "Голосование",
+    "profile": "Профиль",
+    "admin": "Админ",
+    "login": "Войти",
+    "register": "Регистрация",
+    "logout": "Выйти"
+  },
+  "home": {
+    "hero": {
+      "title": "Читайте лучшие новеллы",
+      "subtitle": "Тысячи переведённых произведений на 7 языках"
+    },
+    "sections": {
+      "latestUpdates": "Последние обновления",
+      "popular": "Популярное",
+      "trending": "В тренде",
+      "newReleases": "Новинки",
+      "topRated": "Лучшие по рейтингу",
+      "recommended": "Рекомендации",
+      "collections": "Коллекции"
+    },
+    "voting": {
+      "title": "Голосовать за новеллу",
+      "description": "Выберите, какую книгу переведём следующей",
+      "button": "Голосовать"
+    },
+    "propose": {
+      "title": "Предложить новеллу",
+      "description": "Добавьте книгу в очередь на перевод",
+      "button": "Предложить"
+    }
+  },
+  "novel": {
+    "status": {
+      "ongoing": "Продолжается",
+      "completed": "Завершено",
+      "paused": "Перерыв",
+      "dropped": "Брошено"
+    },
+    "tabs": {
+      "description": "Описание",
+      "chapters": "Оглавление",
+      "comments": "Комментарии"
+    },
+    "info": {
+      "author": "Автор",
+      "year": "Год",
+      "originalChapters": "Глав в оригинале",
+      "translatedChapters": "Переведено глав",
+      "genres": "Жанры",
+      "tags": "Теги",
+      "altNames": "Другие названия"
+    },
+    "actions": {
+      "read": "Читать",
+      "continue": "Продолжить",
+      "addBookmark": "В закладки",
+      "removeBookmark": "Убрать из закладок",
+      "vote": "Голосовать",
+      "rate": "Оценить",
+      "share": "Поделиться"
+    }
+  },
+  "reader": {
+    "chapter": "Глава {number}",
+    "navigation": {
+      "prev": "Предыдущая глава",
+      "next": "Следующая глава",
+      "toc": "Оглавление"
+    },
+    "settings": {
+      "title": "Настройки чтения",
+      "fontSize": "Размер шрифта",
+      "theme": "Тема",
+      "lineHeight": "Межстрочный интервал"
+    },
+    "progress": {
+      "reading": "Читаете",
+      "saved": "Прогресс сохранён"
+    }
+  },
+  "catalog": {
+    "title": "Каталог",
+    "filters": {
+      "genres": "Жанры",
+      "status": "Статус",
+      "sortBy": "Сортировка",
+      "clear": "Сбросить"
+    },
+    "sort": {
+      "newest": "Новые",
+      "updated": "По обновлению",
+      "popular": "Популярные",
+      "rating": "По рейтингу",
+      "bookmarks": "По закладкам"
+    },
+    "noResults": "Ничего не найдено",
+    "resultsCount": "{count} новелл найдено"
+  },
+  "bookmarks": {
+    "pageTitle": "Мои закладки",
+    "pageDescription": "Ваша библиотека сохранённых новелл",
+    "title": "Мои закладки",
+    "subtitle": "{count} книг в закладках",
+    "lists": "Списки",
+    "allBooks": "Все книги",
+    "loginRequired": "Войдите в аккаунт",
+    "loginRequiredDesc": "Для доступа к закладкам необходимо авторизоваться",
+    "login": "Войти",
+    "showing": "Показано {count} из {total}",
+    "sortLatestUpdate": "По обновлению",
+    "sortDateAdded": "По дате добавления",
+    "sortTitle": "По названию",
+    "emptyList": "Список пуст",
+    "emptyListDesc": "Добавьте книги из каталога",
+    "browseCatalog": "Перейти в каталог",
+    "chapters": "глав",
+    "progress": "Прогресс",
+    "moveTo": "Переместить в...",
+    "confirmRemove": "Удалить книгу из закладок?",
+    "remove": "Удалить",
+    "continue": "Читать",
+    "prevPage": "Назад",
+    "nextPage": "Далее",
+    "loadError": "Ошибка загрузки",
+    "reading": "Читаю",
+    "planned": "В планах",
+    "dropped": "Брошено",
+    "completed": "Прочитано",
+    "favorites": "Избранное"
+  },
+  "profile": {
+    "title": "Профиль",
+    "stats": {
+      "chaptersRead": "Прочитано глав",
+      "readingTime": "Время чтения",
+      "comments": "Комментариев",
+      "level": "Уровень",
+      "xp": "Опыт"
+    },
+    "tabs": {
+      "bookmarks": "Закладки",
+      "comments": "Комментарии",
+      "achievements": "Достижения",
+      "settings": "Настройки"
+    },
+    "subscription": {
+      "free": "Бесплатный",
+      "premium": "Премиум",
+      "upgrade": "Улучшить"
+    },
+    "level": {
+      "current": "Уровень {level}",
+      "progress": "{current} / {needed} XP до следующего уровня"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Вход",
+      "email": "Email",
+      "password": "Пароль",
+      "forgotPassword": "Забыли пароль?",
+      "submit": "Войти",
+      "noAccount": "Нет аккаунта?",
+      "register": "Зарегистрироваться"
+    },
+    "register": {
+      "title": "Регистрация",
+      "displayName": "Имя пользователя",
+      "email": "Email",
+      "password": "Пароль",
+      "confirmPassword": "Подтвердите пароль",
+      "submit": "Создать аккаунт",
+      "hasAccount": "Уже есть аккаунт?",
+      "login": "Войти"
+    },
+    "errors": {
+      "invalidCredentials": "Неверный email или пароль",
+      "emailExists": "Email уже используется",
+      "passwordMismatch": "Пароли не совпадают",
+      "weakPassword": "Пароль должен быть не менее 8 символов"
+    }
+  },
+  "comments": {
+    "title": "Комментарии",
+    "placeholder": "Напишите комментарий...",
+    "replyPlaceholder": "Напишите ответ...",
+    "submit": "Отправить",
+    "submitReply": "Ответить",
+    "reply": "Ответить",
+    "replyingTo": "Ответ на комментарий",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "report": "Пожаловаться",
+    "reportReason": "Укажите причину жалобы (минимум 10 символов)",
+    "markSpoiler": "Пометить как спойлер",
+    "spoilerWarning": "Нажмите, чтобы показать спойлер",
+    "noComments": "Пока нет комментариев. Будьте первым!",
+    "loadError": "Ошибка загрузки комментариев",
+    "loginToComment": "Войдите, чтобы оставлять комментарии",
+    "deletedComment": "Комментарий удалён",
+    "deletedUser": "Удалённый пользователь",
+    "confirmDelete": "Удалить комментарий?",
+    "showReplies": "Показать ответы ({count})",
+    "hideReplies": "Скрыть ответы",
+    "sortNewest": "Новые",
+    "sortOldest": "Старые",
+    "sortTop": "Лучшие",
+    "prevPage": "Назад",
+    "nextPage": "Далее",
+    "roleAdmin": "Админ",
+    "roleMod": "Модератор",
+    "rolePremium": "Premium"
+  },
+  "xp": {
+    "level": "Уровень {level}",
+    "progress": "{current} / {total} XP",
+    "nextLevel": "До уровня {level}",
+    "rewards": {
+      "readChapter": "+{xp} XP за прочтение главы",
+      "comment": "+{xp} XP за комментарий",
+      "dailyLogin": "+{xp} XP за ежедневный вход",
+      "vote": "+{xp} XP за голосование",
+      "proposal": "+{xp} XP за предложение новеллы",
+      "bookmark": "+{xp} XP за закладку"
+    }
+  },
+  "achievements": {
+    "title": "Достижения",
+    "unlocked": "Получено",
+    "locked": "Заблокировано",
+    "progress": "{current} / {total}",
+    "firstChapter": "Первая глава",
+    "bookworm10": "Книжный червь",
+    "bookworm100": "Заядлый читатель",
+    "bookworm1000": "Мастер чтения",
+    "firstComment": "Первый комментарий",
+    "commentator10": "Комментатор",
+    "commentator100": "Активный участник",
+    "firstBookmark": "Первая закладка",
+    "collector10": "Коллекционер",
+    "collector100": "Библиотекарь"
+  },
+  "errors": {
+    "notFound": "Страница не найдена",
+    "serverError": "Ошибка сервера",
+    "unauthorized": "Необходима авторизация",
+    "forbidden": "Доступ запрещён",
+    "goHome": "На главную"
+  },
+  "wallet": {
+    "title": "Кошелёк",
+    "dailyVotes": "Ежедневные голоса",
+    "novelRequests": "Билеты тайтлов",
+    "translationTickets": "Билеты перевода",
+    "balance": "Баланс"
+  }
+}

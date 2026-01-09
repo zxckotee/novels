@@ -1,0 +1,271 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Базовые стили ===== */
+@layer base {
+  html {
+    @apply antialiased;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background-primary text-foreground-primary font-sans;
+  }
+
+  /* Кастомное выделение текста */
+  ::selection {
+    @apply bg-accent-primary/30;
+  }
+
+  /* Ссылки */
+  a {
+    @apply text-accent-primary transition-colors hover:text-accent-primary/80;
+  }
+
+  /* Заголовки */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-semibold tracking-tight;
+  }
+
+  h1 {
+    @apply text-3xl md:text-4xl;
+  }
+
+  h2 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl;
+  }
+
+  h4 {
+    @apply text-lg md:text-xl;
+  }
+}
+
+/* ===== Компоненты ===== */
+@layer components {
+  /* Кнопки */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 
+           font-medium text-sm rounded-button transition-all 
+           focus:outline-none focus:ring-2 focus:ring-offset-2 
+           focus:ring-offset-background-primary disabled:opacity-50 
+           disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent-primary text-white hover:bg-accent-primary/90 
+           focus:ring-accent-primary;
+  }
+
+  .btn-secondary {
+    @apply btn bg-background-tertiary text-foreground-primary 
+           border border-border-primary hover:bg-background-hover 
+           focus:ring-border-focus;
+  }
+
+  .btn-danger {
+    @apply btn bg-accent-danger text-white hover:bg-accent-danger/90 
+           focus:ring-accent-danger;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-foreground-secondary 
+           hover:bg-background-hover hover:text-foreground-primary;
+  }
+
+  .btn-icon {
+    @apply btn p-2 aspect-square;
+  }
+
+  /* Карточки */
+  .card {
+    @apply bg-background-card rounded-card border border-border-primary 
+           shadow-card transition-shadow hover:shadow-card-hover;
+  }
+
+  .card-hover {
+    @apply card hover:border-border-secondary cursor-pointer;
+  }
+
+  /* Инпуты */
+  .input {
+    @apply w-full px-4 py-2 bg-background-tertiary border border-border-primary 
+           rounded-input text-foreground-primary placeholder:text-foreground-muted
+           focus:outline-none focus:ring-2 focus:ring-accent-primary 
+           focus:border-transparent transition-all;
+  }
+
+  .input-error {
+    @apply input border-accent-danger focus:ring-accent-danger;
+  }
+
+  /* Теги/Бейджи */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-tag text-xs 
+           font-medium bg-background-tertiary text-foreground-secondary;
+  }
+
+  .badge-primary {
+    @apply badge bg-accent-primary/20 text-accent-primary;
+  }
+
+  .badge-success {
+    @apply badge bg-accent-success/20 text-accent-success;
+  }
+
+  .badge-warning {
+    @apply badge bg-accent-warning/20 text-accent-warning;
+  }
+
+  .badge-danger {
+    @apply badge bg-accent-danger/20 text-accent-danger;
+  }
+
+  .badge-new {
+    @apply badge bg-accent-secondary text-white;
+  }
+
+  /* Табы */
+  .tab {
+    @apply px-4 py-2 text-sm font-medium text-foreground-secondary 
+           cursor-pointer transition-colors hover:text-foreground-primary
+           border-b-2 border-transparent;
+  }
+
+  .tab-active {
+    @apply tab text-accent-primary border-accent-primary;
+  }
+
+  /* Дропдауны */
+  .dropdown {
+    @apply absolute z-50 mt-2 min-w-48 bg-background-card 
+           border border-border-primary rounded-card shadow-dropdown 
+           animate-fade-in;
+  }
+
+  .dropdown-item {
+    @apply px-4 py-2 text-sm text-foreground-secondary 
+           hover:bg-background-hover hover:text-foreground-primary 
+           cursor-pointer transition-colors first:rounded-t-card last:rounded-b-card;
+  }
+
+  /* Модалки */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 bg-black/70 backdrop-blur-sm 
+           flex items-center justify-center;
+  }
+
+  .modal {
+    @apply relative bg-background-card rounded-card p-6 
+           max-w-lg w-full mx-4 shadow-dropdown animate-slide-up;
+  }
+
+  /* Секции */
+  .section {
+    @apply py-8 md:py-12;
+  }
+
+  .section-title {
+    @apply text-xl md:text-2xl font-heading font-semibold mb-6 
+           flex items-center justify-between;
+  }
+
+  /* Контейнер */
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* ===== Утилиты ===== */
+@layer utilities {
+  /* Градиенты */
+  .gradient-text {
+    @apply bg-gradient-to-r from-accent-primary to-accent-secondary 
+           bg-clip-text text-transparent;
+  }
+
+  .gradient-bg {
+    @apply bg-gradient-to-br from-accent-primary/10 to-accent-secondary/10;
+  }
+
+  /* Обрезка текста */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  /* Анимации */
+  .hover-lift {
+    @apply transition-transform hover:-translate-y-1;
+  }
+
+  .hover-scale {
+    @apply transition-transform hover:scale-105;
+  }
+
+  /* Скрытие по условию */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ===== Стили для ридера ===== */
+.reader-content {
+  @apply max-w-3xl mx-auto text-lg leading-relaxed;
+}
+
+.reader-content p {
+  @apply mb-4 text-foreground-primary;
+}
+
+.reader-content p:first-child::first-letter {
+  @apply text-5xl font-bold float-left mr-2 text-accent-primary;
+}
+
+/* ===== Рейтинговые звезды ===== */
+.star-rating {
+  @apply flex items-center gap-0.5;
+}
+
+.star-filled {
+  @apply text-accent-warning;
+}
+
+.star-empty {
+  @apply text-foreground-muted;
+}
+
+/* ===== Скелетон загрузки ===== */
+.skeleton {
+  @apply animate-pulse bg-background-hover rounded;
+}
+
+/* ===== Тосты ===== */
+.toast-container {
+  @apply fixed bottom-4 right-4 z-50 space-y-2;
+}
