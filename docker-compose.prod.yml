@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: novels_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-novels}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-novels}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-novels} -d ${DB_NAME:-novels}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - novels_network
+
+  # Go Backend API
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: novels_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-novels}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-novels}
+      DB_SSLMODE: disable
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://novels.example.com}
+      BASE_URL: ${API_BASE_URL:-https://api.novels.example.com}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - novels_network
+
+  # Next.js Frontend
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.novels.example.com}
+        - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://novels.example.com}
+    container_name: novels_web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.novels.example.com}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://novels.example.com}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - novels_network
+
+  # Nginx Reverse Proxy (optional, for SSL termination)
+  nginx:
+    image: nginx:alpine
+    container_name: novels_nginx
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/ssl:/etc/nginx/ssl:ro
+      - ./infra/nginx/conf.d:/etc/nginx/conf.d:ro
+    networks:
+      - novels_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  novels_network:
+    driver: bridge
