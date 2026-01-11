@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"novels-backend/internal/domain/models"
+	"novels-backend/internal/http/middleware"
 	"novels-backend/internal/service"
 	"novels-backend/pkg/response"
 
@@ -38,7 +39,7 @@ func (h *ChapterHandler) ListByNovel(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w, "novel not found")
 			return
 		}
-		response.InternalError(w, "failed to get chapters")
+		response.InternalError(w)
 		return
 	}
 
@@ -62,9 +63,11 @@ func (h *ChapterHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	// Получаем пользователя если авторизован
 	var userID *uuid.UUID
-	user := models.GetUserFromContext(r.Context())
-	if user != nil {
-		userID = &user.ID
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr != "" {
+		if uid, err := uuid.Parse(userIDStr); err == nil {
+			userID = &uid
+		}
 	}
 
 	chapter, err := h.chapterService.GetForReader(r.Context(), id, lang, userID)
@@ -73,7 +76,7 @@ func (h *ChapterHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w, "chapter not found")
 			return
 		}
-		response.InternalError(w, "failed to get chapter")
+		response.InternalError(w)
 		return
 	}
 
@@ -83,9 +86,15 @@ func (h *ChapterHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 // SaveProgress сохраняет прогресс чтения
 // POST /api/v1/chapters/{id}/progress
 func (h *ChapterHandler) SaveProgress(w http.ResponseWriter, r *http.Request) {
-	user := models.GetUserFromContext(r.Context())
-	if user == nil {
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
 		response.Unauthorized(w, "not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Unauthorized(w, "invalid user id")
 		return
 	}
 
@@ -104,8 +113,8 @@ func (h *ChapterHandler) SaveProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.chapterService.SaveProgress(r.Context(), user.ID, chapterID, req.Position); err != nil {
-		response.InternalError(w, "failed to save progress")
+	if err := h.chapterService.SaveProgress(r.Context(), userID, chapterID, req.Position); err != nil {
+		response.InternalError(w)
 		return
 	}
 
@@ -115,21 +124,27 @@ func (h *ChapterHandler) SaveProgress(w http.ResponseWriter, r *http.Request) {
 // GetProgress получает прогресс чтения для новеллы
 // GET /api/v1/novels/{slug}/progress
 func (h *ChapterHandler) GetProgress(w http.ResponseWriter, r *http.Request) {
-	user := models.GetUserFromContext(r.Context())
-	if user == nil {
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
 		response.Unauthorized(w, "not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Unauthorized(w, "invalid user id")
 		return
 	}
 
 	slug := chi.URLParam(r, "slug")
 
-	progress, err := h.chapterService.GetProgress(r.Context(), user.ID, slug)
+	progress, err := h.chapterService.GetProgress(r.Context(), userID, slug)
 	if err != nil {
 		if errors.Is(err, service.ErrNovelNotFound) {
 			response.NotFound(w, "novel not found")
 			return
 		}
-		response.InternalError(w, "failed to get progress")
+		response.InternalError(w)
 		return
 	}
 
@@ -144,7 +159,6 @@ func (h *ChapterHandler) GetProgress(w http.ResponseWriter, r *http.Request) {
 // parseListParams парсит параметры списка
 func (h *ChapterHandler) parseListParams(r *http.Request) models.ChapterListParams {
 	params := models.ChapterListParams{
-		Lang:  r.URL.Query().Get("lang"),
 		Sort:  r.URL.Query().Get("sort"),
 		Order: r.URL.Query().Get("order"),
 	}

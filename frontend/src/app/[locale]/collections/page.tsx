@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { unstable_setRequestLocale } from 'next-intl/server';
 import CollectionsPageClient from './CollectionsPageClient';
 
 export const metadata: Metadata = {
@@ -12,5 +13,6 @@ interface PageProps {
 }
 
 export default function CollectionsPage({ params, searchParams }: PageProps) {
+  unstable_setRequestLocale(params.locale);
   return <CollectionsPageClient locale={params.locale} searchParams={searchParams} />;
 }

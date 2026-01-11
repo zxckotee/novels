@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"novels/internal/domain/models"
+	"novels-backend/internal/domain/models"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"

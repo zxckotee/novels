@@ -7,10 +7,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/novels/backend/internal/domain/models"
-	"github.com/novels/backend/internal/http/middleware"
-	"github.com/novels/backend/internal/service"
-	"github.com/novels/backend/pkg/response"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/http/middleware"
+	"novels-backend/internal/service"
+	"novels-backend/pkg/response"
 	"github.com/rs/zerolog"
 )
 
@@ -29,16 +29,22 @@ func NewWalletHandler(ticketService *service.TicketService, logger zerolog.Logge
 // GetWallet returns the current user's wallet
 // GET /api/v1/wallet
 func (h *WalletHandler) GetWallet(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 	
 	wallet, err := h.ticketService.GetWallet(r.Context(), userID)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get wallet")
-		response.Error(w, http.StatusInternalServerError, "failed to get wallet", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get wallet")
 		return
 	}
 	
@@ -48,9 +54,15 @@ func (h *WalletHandler) GetWallet(w http.ResponseWriter, r *http.Request) {
 // GetTransactions returns the current user's ticket transactions
 // GET /api/v1/wallet/transactions
 func (h *WalletHandler) GetTransactions(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 	
@@ -74,7 +86,7 @@ func (h *WalletHandler) GetTransactions(w http.ResponseWriter, r *http.Request) 
 	transactions, err := h.ticketService.GetTransactions(r.Context(), userID, ticketType, page, limit)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get transactions")
-		response.Error(w, http.StatusInternalServerError, "failed to get transactions", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get transactions")
 		return
 	}
 	
@@ -84,16 +96,22 @@ func (h *WalletHandler) GetTransactions(w http.ResponseWriter, r *http.Request) 
 // GetStats returns the current user's ticket statistics
 // GET /api/v1/wallet/stats
 func (h *WalletHandler) GetStats(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 	
 	stats, err := h.ticketService.GetUserStats(r.Context(), userID)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get stats")
-		response.Error(w, http.StatusInternalServerError, "failed to get stats", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get stats")
 		return
 	}
 	
@@ -116,7 +134,7 @@ func (h *WalletHandler) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
 	entries, err := h.ticketService.GetLeaderboard(r.Context(), period, limit)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get leaderboard")
-		response.Error(w, http.StatusInternalServerError, "failed to get leaderboard", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get leaderboard")
 		return
 	}
 	
@@ -131,17 +149,17 @@ func (h *WalletHandler) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
 func (h *WalletHandler) GrantTickets(w http.ResponseWriter, r *http.Request) {
 	var req models.GrantTicketRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
 	
 	// Validate
 	if req.UserID == uuid.Nil {
-		response.Error(w, http.StatusBadRequest, "user_id is required", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "user_id is required")
 		return
 	}
 	if req.Amount < 1 {
-		response.Error(w, http.StatusBadRequest, "amount must be positive", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "amount must be positive")
 		return
 	}
 	if req.Reason == "" {
@@ -151,7 +169,7 @@ func (h *WalletHandler) GrantTickets(w http.ResponseWriter, r *http.Request) {
 	err := h.ticketService.GrantTickets(r.Context(), req)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to grant tickets")
-		response.Error(w, http.StatusInternalServerError, "failed to grant tickets", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to grant tickets")
 		return
 	}
 	
@@ -164,14 +182,14 @@ func (h *WalletHandler) GetUserWallet(w http.ResponseWriter, r *http.Request) {
 	userIDStr := chi.URLParam(r, "userId")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid user ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid user ID")
 		return
 	}
 	
 	wallet, err := h.ticketService.GetWallet(r.Context(), userID)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get user wallet")
-		response.Error(w, http.StatusInternalServerError, "failed to get wallet", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get wallet")
 		return
 	}
 	

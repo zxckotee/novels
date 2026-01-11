@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { unstable_setRequestLocale } from 'next-intl/server';
 import CollectionDetailClient from './CollectionDetailClient';
 
 interface PageProps {
@@ -13,5 +14,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default function CollectionDetailPage({ params }: PageProps) {
+  unstable_setRequestLocale(params.locale);
   return <CollectionDetailClient locale={params.locale} slug={params.slug} />;
 }

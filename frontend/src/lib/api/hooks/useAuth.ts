@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../client';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, type User as StoreUser } from '@/store/auth';
 import type { User, UserProfile } from '../types';
 
 // Query keys
@@ -24,6 +24,17 @@ interface RegisterRequest {
 interface AuthResponse {
   user: User;
   accessToken: string;
+}
+
+// Convert API User to Store User
+function convertApiUserToStoreUser(apiUser: User): StoreUser {
+  return {
+    id: apiUser.id,
+    email: apiUser.email,
+    displayName: apiUser.displayName,
+    avatarUrl: apiUser.avatarUrl,
+    roles: [apiUser.role], // Convert single role to array
+  };
 }
 
 // Get current user
@@ -60,7 +71,7 @@ export function useUserProfile() {
 // Login mutation
 export function useLogin() {
   const queryClient = useQueryClient();
-  const { setAuth } = useAuthStore();
+  const { login } = useAuthStore();
   
   return useMutation({
     mutationFn: async (credentials: LoginRequest) => {
@@ -68,7 +79,8 @@ export function useLogin() {
       return response.data;
     },
     onSuccess: (data) => {
-      setAuth(data.user, data.accessToken);
+      const storeUser = convertApiUserToStoreUser(data.user);
+      login(storeUser, data.accessToken);
       queryClient.setQueryData(authKeys.user, data.user);
     },
   });
@@ -77,7 +89,7 @@ export function useLogin() {
 // Register mutation
 export function useRegister() {
   const queryClient = useQueryClient();
-  const { setAuth } = useAuthStore();
+  const { login } = useAuthStore();
   
   return useMutation({
     mutationFn: async (data: RegisterRequest) => {
@@ -85,7 +97,8 @@ export function useRegister() {
       return response.data;
     },
     onSuccess: (data) => {
-      setAuth(data.user, data.accessToken);
+      const storeUser = convertApiUserToStoreUser(data.user);
+      login(storeUser, data.accessToken);
       queryClient.setQueryData(authKeys.user, data.user);
     },
   });

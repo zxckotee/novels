@@ -37,6 +37,7 @@ type RedisConfig struct {
 
 type JWTConfig struct {
 	Secret           string
+	RefreshSecret    string
 	AccessTokenTTL   time.Duration
 	RefreshTokenTTL  time.Duration
 }
@@ -66,6 +67,7 @@ func Load() *Config {
 		},
 		JWT: JWTConfig{
 			Secret:          getEnv("JWT_SECRET", "dev_jwt_secret_change_in_production_32chars"),
+			RefreshSecret:   getEnv("JWT_REFRESH_SECRET", "dev_jwt_refresh_secret_change_in_production_32chars"),
 			AccessTokenTTL:  getDurationEnv("JWT_ACCESS_TTL", 1*time.Hour),
 			RefreshTokenTTL: getDurationEnv("JWT_REFRESH_TTL", 7*24*time.Hour),
 		},

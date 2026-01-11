@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { isModerator as checkIsModerator } from '@/store/auth';
 
 interface EditChange {
   fieldType: string;
@@ -43,7 +44,7 @@ export default function ModerationEditRequestsClient({ locale }: ModerationEditR
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
 
   // Check if user is moderator/admin
-  const isModerator = user?.role === 'moderator' || user?.role === 'admin';
+  const isModerator = checkIsModerator(user);
 
   useEffect(() => {
     if (isModerator) {

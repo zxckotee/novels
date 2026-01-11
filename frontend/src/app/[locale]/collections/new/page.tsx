@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { unstable_setRequestLocale } from 'next-intl/server';
 import CollectionFormClient from '../CollectionFormClient';
 
 export const metadata: Metadata = {
@@ -11,5 +12,6 @@ interface PageProps {
 }
 
 export default function NewCollectionPage({ params }: PageProps) {
+  unstable_setRequestLocale(params.locale);
   return <CollectionFormClient locale={params.locale} />;
 }

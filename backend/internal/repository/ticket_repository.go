@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/novels/backend/internal/domain/models"
+	"novels-backend/internal/domain/models"
 )
 
 type TicketRepository struct {

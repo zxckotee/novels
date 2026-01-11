@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Inter, Manrope } from 'next/font/google';
 import { notFound } from 'next/navigation';
-import { NextIntlClientProvider, useMessages } from 'next-intl';
+import { NextIntlClientProvider, useMessages, unstable_setRequestLocale } from 'next-intl';
 import { locales, type Locale } from '@/i18n/config';
 import '@/styles/globals.css';
 import { Providers } from './providers';
@@ -71,6 +71,9 @@ export default function LocaleLayout({
   if (!locales.includes(locale as Locale)) {
     notFound();
   }
+
+  // Enable static rendering
+  unstable_setRequestLocale(locale);
 
   // Get messages for the locale
   const messages = useMessages();

@@ -13,7 +13,7 @@ import {
   MessageSquare,
   Flag
 } from 'lucide-react';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, isModerator } from '@/store/auth';
 import { useRouter } from 'next/navigation';
 
 export default function AdminDashboard() {
@@ -23,7 +23,7 @@ export default function AdminDashboard() {
   const { isAuthenticated, user } = useAuthStore();
   
   // Check admin access
-  if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'moderator')) {
+  if (!isAuthenticated || !isModerator(user)) {
     if (typeof window !== 'undefined') {
       router.push(`/${locale}`);
     }

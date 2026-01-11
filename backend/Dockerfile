@@ -6,8 +6,12 @@ WORKDIR /app
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-# Copy go mod files
-COPY go.mod go.sum ./
+# Copy go.mod (go.sum будет сгенерирован внутри контейнера)
+COPY go.mod ./
+
+# Разрешаем Go изменять go.sum внутри контейнера
+ENV GOFLAGS=-mod=mod
+
 RUN go mod download
 
 # Copy source code

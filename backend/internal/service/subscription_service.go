@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/novels/backend/internal/domain/models"
-	"github.com/novels/backend/internal/repository"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/repository"
 	"github.com/rs/zerolog"
 )
 

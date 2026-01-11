@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"novels/internal/domain/models"
-	"novels/internal/http/middleware"
-	"novels/internal/service"
-	"novels/pkg/response"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/http/middleware"
+	"novels-backend/internal/service"
+	"novels-backend/pkg/response"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -29,33 +29,38 @@ func NewWikiEditHandler(wikiEditService *service.WikiEditService) *WikiEditHandl
 // CreateEditRequest creates a new edit request (Premium only)
 // POST /novels/{id}/edit-requests
 func (h *WikiEditHandler) CreateEditRequest(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r.Context())
-	if userID == uuid.Nil {
-		response.Error(w, http.StatusUnauthorized, "Not authenticated", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 
 	novelIDStr := chi.URLParam(r, "id")
 	novelID, err := uuid.Parse(novelIDStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid novel ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid novel ID")
 		return
 	}
 
 	var req models.CreateEditRequestRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid request body", err)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
-	req.NovelID = novelID
 
-	editRequest, err := h.wikiEditService.CreateEditRequest(r.Context(), userID, &req)
+	editRequest, err := h.wikiEditService.CreateEditRequest(r.Context(), userID, novelID, &req)
 	if err != nil {
-		if err.Error() == "premium subscription required" {
-			response.Error(w, http.StatusForbidden, "Premium subscription required", nil)
+		if err.Error() == "editing descriptions requires Premium subscription" {
+			response.Error(w, http.StatusForbidden, "FORBIDDEN", "Premium subscription required")
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "Failed to create edit request", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to create edit request")
 		return
 	}
 
@@ -68,17 +73,17 @@ func (h *WikiEditHandler) GetEditRequest(w http.ResponseWriter, r *http.Request)
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid edit request ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid edit request ID")
 		return
 	}
 
-	editRequest, err := h.wikiEditService.GetByID(r.Context(), id)
+	editRequest, err := h.wikiEditService.GetEditRequest(r.Context(), id)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to get edit request", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get edit request")
 		return
 	}
 	if editRequest == nil {
-		response.Error(w, http.StatusNotFound, "Edit request not found", nil)
+		response.Error(w, http.StatusNotFound, "NOT_FOUND", "Edit request not found")
 		return
 	}
 
@@ -88,15 +93,22 @@ func (h *WikiEditHandler) GetEditRequest(w http.ResponseWriter, r *http.Request)
 // GetUserEditRequests returns edit requests for the current user
 // GET /me/edit-requests
 func (h *WikiEditHandler) GetUserEditRequests(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r.Context())
-	if userID == uuid.Nil {
-		response.Error(w, http.StatusUnauthorized, "Not authenticated", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 
 	params := models.EditRequestListParams{
 		Page:  1,
 		Limit: 20,
+		UserID: &userID,
 	}
 
 	if page, _ := strconv.Atoi(r.URL.Query().Get("page")); page > 0 {
@@ -111,9 +123,9 @@ func (h *WikiEditHandler) GetUserEditRequests(w http.ResponseWriter, r *http.Req
 		params.Status = &status
 	}
 
-	result, err := h.wikiEditService.GetUserEditRequests(r.Context(), userID, params)
+	result, err := h.wikiEditService.ListEditRequests(r.Context(), params)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to get edit requests", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get edit requests")
 		return
 	}
 
@@ -126,13 +138,14 @@ func (h *WikiEditHandler) GetNovelEditRequests(w http.ResponseWriter, r *http.Re
 	novelIDStr := chi.URLParam(r, "id")
 	novelID, err := uuid.Parse(novelIDStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid novel ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid novel ID")
 		return
 	}
 
 	params := models.EditRequestListParams{
-		Page:  1,
-		Limit: 20,
+		Page:    1,
+		Limit:   20,
+		NovelID: &novelID,
 	}
 
 	if page, _ := strconv.Atoi(r.URL.Query().Get("page")); page > 0 {
@@ -147,9 +160,9 @@ func (h *WikiEditHandler) GetNovelEditRequests(w http.ResponseWriter, r *http.Re
 		params.Status = &status
 	}
 
-	result, err := h.wikiEditService.GetNovelEditRequests(r.Context(), novelID, params)
+	result, err := h.wikiEditService.ListEditRequests(r.Context(), params)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to get edit requests", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get edit requests")
 		return
 	}
 
@@ -159,31 +172,19 @@ func (h *WikiEditHandler) GetNovelEditRequests(w http.ResponseWriter, r *http.Re
 // GetPendingEditRequests returns all pending edit requests (moderator/admin)
 // GET /moderation/edit-requests
 func (h *WikiEditHandler) GetPendingEditRequests(w http.ResponseWriter, r *http.Request) {
-	params := models.EditRequestListParams{
-		Page:  1,
-		Limit: 20,
+	page := 1
+	limit := 20
+
+	if p, _ := strconv.Atoi(r.URL.Query().Get("page")); p > 0 {
+		page = p
+	}
+	if l, _ := strconv.Atoi(r.URL.Query().Get("limit")); l > 0 && l <= 50 {
+		limit = l
 	}
 
-	// Default to pending status
-	pendingStatus := models.EditRequestStatusPending
-	params.Status = &pendingStatus
-
-	if page, _ := strconv.Atoi(r.URL.Query().Get("page")); page > 0 {
-		params.Page = page
-	}
-	if limit, _ := strconv.Atoi(r.URL.Query().Get("limit")); limit > 0 && limit <= 50 {
-		params.Limit = limit
-	}
-
-	// Allow overriding status
-	if statusStr := r.URL.Query().Get("status"); statusStr != "" {
-		status := models.EditRequestStatus(statusStr)
-		params.Status = &status
-	}
-
-	result, err := h.wikiEditService.GetPendingEditRequests(r.Context(), params)
+	result, err := h.wikiEditService.GetPendingRequests(r.Context(), page, limit)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to get edit requests", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get edit requests")
 		return
 	}
 
@@ -193,16 +194,22 @@ func (h *WikiEditHandler) GetPendingEditRequests(w http.ResponseWriter, r *http.
 // ApproveEditRequest approves an edit request (moderator/admin)
 // POST /moderation/edit-requests/{id}/approve
 func (h *WikiEditHandler) ApproveEditRequest(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r.Context())
-	if userID == uuid.Nil {
-		response.Error(w, http.StatusUnauthorized, "Not authenticated", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid edit request ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid edit request ID")
 		return
 	}
 
@@ -211,8 +218,13 @@ func (h *WikiEditHandler) ApproveEditRequest(w http.ResponseWriter, r *http.Requ
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 
-	if err := h.wikiEditService.ApproveEditRequest(r.Context(), id, userID, req.Comment); err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to approve edit request", err)
+	reviewReq := &models.ReviewEditRequestRequest{
+		Action:  "approve",
+		Comment: req.Comment,
+	}
+
+	if err := h.wikiEditService.ReviewEditRequest(r.Context(), id, userID, reviewReq); err != nil {
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to approve edit request")
 		return
 	}
 
@@ -222,16 +234,22 @@ func (h *WikiEditHandler) ApproveEditRequest(w http.ResponseWriter, r *http.Requ
 // RejectEditRequest rejects an edit request (moderator/admin)
 // POST /moderation/edit-requests/{id}/reject
 func (h *WikiEditHandler) RejectEditRequest(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r.Context())
-	if userID == uuid.Nil {
-		response.Error(w, http.StatusUnauthorized, "Not authenticated", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid edit request ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid edit request ID")
 		return
 	}
 
@@ -239,17 +257,22 @@ func (h *WikiEditHandler) RejectEditRequest(w http.ResponseWriter, r *http.Reque
 		Reason string `json:"reason"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid request body", err)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
 
 	if req.Reason == "" {
-		response.Error(w, http.StatusBadRequest, "Rejection reason is required", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Rejection reason is required")
 		return
 	}
 
-	if err := h.wikiEditService.RejectEditRequest(r.Context(), id, userID, req.Reason); err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to reject edit request", err)
+	reviewReq := &models.ReviewEditRequestRequest{
+		Action:  "reject",
+		Comment: req.Reason,
+	}
+
+	if err := h.wikiEditService.ReviewEditRequest(r.Context(), id, userID, reviewReq); err != nil {
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to reject edit request")
 		return
 	}
 
@@ -259,21 +282,27 @@ func (h *WikiEditHandler) RejectEditRequest(w http.ResponseWriter, r *http.Reque
 // CancelEditRequest cancels an edit request (owner only)
 // POST /edit-requests/{id}/cancel
 func (h *WikiEditHandler) CancelEditRequest(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r.Context())
-	if userID == uuid.Nil {
-		response.Error(w, http.StatusUnauthorized, "Not authenticated", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid edit request ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid edit request ID")
 		return
 	}
 
-	if err := h.wikiEditService.CancelEditRequest(r.Context(), id, userID); err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to cancel edit request", err)
+	if err := h.wikiEditService.WithdrawEditRequest(r.Context(), id, userID); err != nil {
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to cancel edit request")
 		return
 	}
 
@@ -286,31 +315,30 @@ func (h *WikiEditHandler) GetNovelEditHistory(w http.ResponseWriter, r *http.Req
 	novelIDStr := chi.URLParam(r, "id")
 	novelID, err := uuid.Parse(novelIDStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid novel ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid novel ID")
 		return
 	}
 
-	page := 1
-	limit := 20
+	params := models.EditHistoryListParams{
+		NovelID: &novelID,
+		Page:    1,
+		Limit:   20,
+	}
+
 	if p, _ := strconv.Atoi(r.URL.Query().Get("page")); p > 0 {
-		page = p
+		params.Page = p
 	}
 	if l, _ := strconv.Atoi(r.URL.Query().Get("limit")); l > 0 && l <= 50 {
-		limit = l
+		params.Limit = l
 	}
 
-	history, total, err := h.wikiEditService.GetNovelEditHistory(r.Context(), novelID, page, limit)
+	result, err := h.wikiEditService.GetEditHistory(r.Context(), params)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to get edit history", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get edit history")
 		return
 	}
 
-	response.JSON(w, http.StatusOK, map[string]interface{}{
-		"history": history,
-		"total":   total,
-		"page":    page,
-		"limit":   limit,
-	})
+	response.JSON(w, http.StatusOK, result)
 }
 
 // GetPlatformStats returns platform statistics
@@ -318,7 +346,7 @@ func (h *WikiEditHandler) GetNovelEditHistory(w http.ResponseWriter, r *http.Req
 func (h *WikiEditHandler) GetPlatformStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := h.wikiEditService.GetPlatformStats(r.Context())
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to get platform stats", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get platform stats")
 		return
 	}
 

@@ -174,3 +174,8 @@ func Unauthorized(w http.ResponseWriter, message string) {
 func Forbidden(w http.ResponseWriter, message string) {
 	Error(w, http.StatusForbidden, "FORBIDDEN", message)
 }
+
+// Conflict отправляет ответ 409 Conflict
+func Conflict(w http.ResponseWriter, message string) {
+	Error(w, http.StatusConflict, "CONFLICT", message)
+}

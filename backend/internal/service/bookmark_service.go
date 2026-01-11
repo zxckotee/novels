@@ -5,13 +5,12 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"novels/internal/domain/models"
-	"novels/internal/repository"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/repository"
 )
 
 var (
 	ErrInvalidListCode = errors.New("invalid bookmark list code")
-	ErrNovelNotFound   = errors.New("novel not found")
 )
 
 type BookmarkService struct {

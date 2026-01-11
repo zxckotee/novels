@@ -1,3 +1,5 @@
+'use client';
+
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ArrowRight, Vote, PlusCircle, Star, TrendingUp, Clock, Sparkles } from 'lucide-react';

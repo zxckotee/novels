@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { unstable_setRequestLocale } from 'next-intl/server';
 import NewsPageClient from './NewsPageClient';
 
 export const metadata: Metadata = {
@@ -12,5 +13,6 @@ interface PageProps {
 }
 
 export default function NewsPage({ params, searchParams }: PageProps) {
+  unstable_setRequestLocale(params.locale);
   return <NewsPageClient locale={params.locale} searchParams={searchParams} />;
 }

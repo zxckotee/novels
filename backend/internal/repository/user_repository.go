@@ -241,3 +241,13 @@ func (r *UserRepository) CleanupExpiredTokens(ctx context.Context) error {
 	}
 	return nil
 }
+
+// UpdatePassword обновляет пароль пользователя
+func (r *UserRepository) UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error {
+	query := `UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3`
+	_, err := r.db.ExecContext(ctx, query, passwordHash, time.Now(), userID)
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+	return nil
+}

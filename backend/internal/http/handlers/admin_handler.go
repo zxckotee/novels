@@ -65,7 +65,7 @@ func (h *AdminHandler) CreateNovel(w http.ResponseWriter, r *http.Request) {
 			response.Conflict(w, "novel with this slug already exists")
 			return
 		}
-		response.InternalError(w, "failed to create novel")
+		response.InternalError(w)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (h *AdminHandler) UpdateNovel(w http.ResponseWriter, r *http.Request) {
 			response.Conflict(w, "novel with this slug already exists")
 			return
 		}
-		response.InternalError(w, "failed to update novel")
+		response.InternalError(w)
 		return
 	}
 
@@ -119,7 +119,7 @@ func (h *AdminHandler) DeleteNovel(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w, "novel not found")
 			return
 		}
-		response.InternalError(w, "failed to delete novel")
+		response.InternalError(w)
 		return
 	}
 
@@ -159,7 +159,7 @@ func (h *AdminHandler) CreateChapter(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w, "novel not found")
 			return
 		}
-		response.InternalError(w, "failed to create chapter")
+		response.InternalError(w)
 		return
 	}
 
@@ -187,7 +187,7 @@ func (h *AdminHandler) UpdateChapter(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w, "chapter not found")
 			return
 		}
-		response.InternalError(w, "failed to update chapter")
+		response.InternalError(w)
 		return
 	}
 
@@ -209,7 +209,7 @@ func (h *AdminHandler) DeleteChapter(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w, "chapter not found")
 			return
 		}
-		response.InternalError(w, "failed to delete chapter")
+		response.InternalError(w)
 		return
 	}
 
@@ -254,7 +254,7 @@ func (h *AdminHandler) UploadCover(w http.ResponseWriter, r *http.Request) {
 	// Создаем директорию для обложек
 	coversDir := filepath.Join(h.uploadDir, "covers")
 	if err := os.MkdirAll(coversDir, 0755); err != nil {
-		response.InternalError(w, "failed to create upload directory")
+		response.InternalError(w)
 		return
 	}
 
@@ -265,29 +265,85 @@ func (h *AdminHandler) UploadCover(w http.ResponseWriter, r *http.Request) {
 	// Сохраняем файл
 	dst, err := os.Create(filePath)
 	if err != nil {
-		response.InternalError(w, "failed to save file")
+		response.InternalError(w)
 		return
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, file); err != nil {
-		response.InternalError(w, "failed to save file")
+		response.InternalError(w)
 		return
 	}
 
 	// Обновляем новеллу
 	coverKey := "covers/" + filename
 	req := &models.UpdateNovelRequest{
-		CoverImageKey: &coverKey,
+		CoverImage: &coverKey,
 	}
 	if err := h.novelService.Update(r.Context(), id, req); err != nil {
-		response.InternalError(w, "failed to update novel")
+		response.InternalError(w)
 		return
 	}
 
 	response.OK(w, map[string]string{
 		"message":   "cover uploaded",
 		"cover_url": "/uploads/" + coverKey,
+	})
+}
+
+// Upload handles generic file uploads
+// POST /api/v1/admin/upload
+func (h *AdminHandler) Upload(w http.ResponseWriter, r *http.Request) {
+	// Парсим multipart form
+	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10MB
+		response.BadRequest(w, "file too large")
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		response.BadRequest(w, "file is required")
+		return
+	}
+	defer file.Close()
+
+	// Проверяем расширение
+	ext := filepath.Ext(header.Filename)
+	allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true}
+	if !allowedExts[ext] {
+		response.BadRequest(w, "only jpg, jpeg, png, webp, gif files are allowed")
+		return
+	}
+
+	// Создаем директорию для общих загрузок
+	uploadsDir := filepath.Join(h.uploadDir, "general")
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		response.InternalError(w)
+		return
+	}
+
+	// Генерируем имя файла
+	filename := uuid.New().String() + ext
+	filePath := filepath.Join(uploadsDir, filename)
+
+	// Сохраняем файл
+	dst, err := os.Create(filePath)
+	if err != nil {
+		response.InternalError(w)
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		response.InternalError(w)
+		return
+	}
+
+	fileKey := "general/" + filename
+	response.OK(w, map[string]string{
+		"message":  "file uploaded",
+		"file_url": "/uploads/" + fileKey,
+		"file_key": fileKey,
 	})
 }
 
@@ -332,7 +388,7 @@ func (h *AdminHandler) BulkCreateChapters(w http.ResponseWriter, r *http.Request
 	}
 
 	if created == 0 && lastError != nil {
-		response.InternalError(w, "failed to create chapters")
+		response.InternalError(w)
 		return
 	}
 

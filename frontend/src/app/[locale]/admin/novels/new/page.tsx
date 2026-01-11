@@ -12,7 +12,7 @@ import {
   Save,
   Image as ImageIcon
 } from 'lucide-react';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, isModerator } from '@/store/auth';
 import api from '@/lib/api/client';
 
 interface NovelFormData {
@@ -68,7 +68,7 @@ export default function NewNovelPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Check admin access
-  if (!user || (user.role !== 'admin' && user.role !== 'moderator')) {
+  if (!user || !isModerator(user)) {
     if (typeof window !== 'undefined') {
       router.push(`/${locale}`);
     }

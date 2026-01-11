@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { ArrowLeft, Save } from 'lucide-react';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, isModerator } from '@/store/auth';
 import api from '@/lib/api/client';
 
 interface ChapterFormData {
@@ -43,7 +43,7 @@ export default function NewChapterPage() {
   const [isLoadingNovels, setIsLoadingNovels] = useState(true);
   
   // Check admin access
-  if (!user || (user.role !== 'admin' && user.role !== 'moderator')) {
+  if (!user || !isModerator(user)) {
     if (typeof window !== 'undefined') {
       router.push(`/${locale}`);
     }

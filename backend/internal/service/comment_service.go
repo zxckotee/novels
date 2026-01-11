@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"novels/internal/domain/models"
-	"novels/internal/repository"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/repository"
 )
 
 var (

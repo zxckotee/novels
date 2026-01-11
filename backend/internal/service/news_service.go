@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"novels/internal/domain/models"
-	"novels/internal/repository"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/repository"
 
 	"github.com/google/uuid"
 	"github.com/gosimple/slug"
@@ -153,10 +153,15 @@ func (s *NewsService) enrichNews(ctx context.Context, news *models.NewsPost) err
 		return err
 	}
 	if user != nil {
+		var avatarURL *string
+		if user.Profile.AvatarKey != nil {
+			url := "/uploads/" + *user.Profile.AvatarKey
+			avatarURL = &url
+		}
 		news.Author = &models.UserPublic{
 			ID:          user.ID,
 			DisplayName: user.Profile.DisplayName,
-			AvatarURL:   user.Profile.AvatarURL,
+			AvatarURL:   avatarURL,
 		}
 	}
 	return nil
@@ -241,10 +246,15 @@ func (s *NewsService) List(ctx context.Context, params models.NewsListParams) (*
 	for i := range news {
 		user, _ := s.userRepo.GetByID(ctx, news[i].ID) // TODO: optimize with batch load
 		if user != nil {
+			var avatarURL *string
+			if user.Profile.AvatarKey != nil {
+				url := "/uploads/" + *user.Profile.AvatarKey
+				avatarURL = &url
+			}
 			news[i].Author = &models.UserPublic{
 				ID:          user.ID,
 				DisplayName: user.Profile.DisplayName,
-				AvatarURL:   user.Profile.AvatarURL,
+				AvatarURL:   avatarURL,
 			}
 		}
 	}

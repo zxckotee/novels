@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/novels/backend/internal/service"
+	"novels-backend/internal/service"
 	"github.com/rs/zerolog"
 )
 

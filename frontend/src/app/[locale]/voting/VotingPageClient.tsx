@@ -54,6 +54,14 @@ interface VotingStats {
   proposalsTranslated: number;
 }
 
+interface WalletInfo {
+  userId: string;
+  dailyVotes: number;
+  novelRequests: number;
+  translationTickets: number;
+  nextDailyReset: string;
+}
+
 export default function VotingPageClient() {
   const t = useTranslations('voting');
   const { isAuthenticated } = useAuth();
@@ -65,7 +73,7 @@ export default function VotingPageClient() {
   const { data: leaderboard, isLoading } = useQuery<VotingLeaderboard>({
     queryKey: ['voting-leaderboard'],
     queryFn: async () => {
-      const response = await api.get('/voting/leaderboard?limit=20');
+      const response = await api.get<VotingLeaderboard>('/voting/leaderboard?limit=20');
       return response.data;
     },
   });
@@ -74,16 +82,16 @@ export default function VotingPageClient() {
   const { data: stats } = useQuery<VotingStats>({
     queryKey: ['voting-stats'],
     queryFn: async () => {
-      const response = await api.get('/voting/stats');
+      const response = await api.get<VotingStats>('/voting/stats');
       return response.data;
     },
   });
 
   // Fetch wallet
-  const { data: wallet } = useQuery({
+  const { data: wallet } = useQuery<WalletInfo>({
     queryKey: ['wallet'],
     queryFn: async () => {
-      const response = await api.get('/wallet');
+      const response = await api.get<WalletInfo>('/wallet');
       return response.data;
     },
     enabled: isAuthenticated,

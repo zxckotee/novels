@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"novels/internal/domain/models"
-	"novels/internal/http/middleware"
-	"novels/internal/service"
-	"novels/pkg/response"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/http/middleware"
+	"novels-backend/internal/service"
+	"novels-backend/pkg/response"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -49,7 +49,7 @@ func (h *NewsHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.newsService.List(r.Context(), params)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to list news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list news")
 		return
 	}
 
@@ -67,11 +67,11 @@ func (h *NewsHandler) GetBySlug(w http.ResponseWriter, r *http.Request) {
 
 	news, err := h.newsService.GetBySlug(r.Context(), slug, lang)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to get news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get news")
 		return
 	}
 	if news == nil {
-		response.Error(w, http.StatusNotFound, "News not found", nil)
+		response.Error(w, http.StatusNotFound, "NOT_FOUND", "News not found")
 		return
 	}
 
@@ -88,7 +88,7 @@ func (h *NewsHandler) GetLatest(w http.ResponseWriter, r *http.Request) {
 
 	news, err := h.newsService.GetLatest(r.Context(), limit)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to get latest news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get latest news")
 		return
 	}
 
@@ -102,7 +102,7 @@ func (h *NewsHandler) GetLatest(w http.ResponseWriter, r *http.Request) {
 func (h *NewsHandler) GetPinned(w http.ResponseWriter, r *http.Request) {
 	news, err := h.newsService.GetPinned(r.Context())
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to get pinned news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get pinned news")
 		return
 	}
 
@@ -114,17 +114,27 @@ func (h *NewsHandler) GetPinned(w http.ResponseWriter, r *http.Request) {
 // Create creates a new news post (admin/moderator only)
 // POST /admin/news
 func (h *NewsHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r.Context())
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user id")
+		return
+	}
 
 	var req models.CreateNewsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid request body", err)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
 
 	news, err := h.newsService.Create(r.Context(), userID, &req)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to create news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to create news")
 		return
 	}
 
@@ -137,19 +147,19 @@ func (h *NewsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid news ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid news ID")
 		return
 	}
 
 	var req models.UpdateNewsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid request body", err)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
 
 	news, err := h.newsService.Update(r.Context(), id, &req)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to update news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update news")
 		return
 	}
 
@@ -162,12 +172,12 @@ func (h *NewsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid news ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid news ID")
 		return
 	}
 
 	if err := h.newsService.Delete(r.Context(), id); err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to delete news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to delete news")
 		return
 	}
 
@@ -180,12 +190,12 @@ func (h *NewsHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid news ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid news ID")
 		return
 	}
 
 	if err := h.newsService.Publish(r.Context(), id); err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to publish news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to publish news")
 		return
 	}
 
@@ -198,12 +208,12 @@ func (h *NewsHandler) Unpublish(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid news ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid news ID")
 		return
 	}
 
 	if err := h.newsService.Unpublish(r.Context(), id); err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to unpublish news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to unpublish news")
 		return
 	}
 
@@ -216,7 +226,7 @@ func (h *NewsHandler) SetPinned(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid news ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid news ID")
 		return
 	}
 
@@ -224,12 +234,12 @@ func (h *NewsHandler) SetPinned(w http.ResponseWriter, r *http.Request) {
 		Pinned bool `json:"pinned"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid request body", err)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
 
 	if err := h.newsService.SetPinned(r.Context(), id, req.Pinned); err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to set pinned status", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to set pinned status")
 		return
 	}
 
@@ -242,7 +252,7 @@ func (h *NewsHandler) SetLocalization(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid news ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid news ID")
 		return
 	}
 
@@ -250,13 +260,13 @@ func (h *NewsHandler) SetLocalization(w http.ResponseWriter, r *http.Request) {
 
 	var req models.NewsLocalizationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid request body", err)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
 	req.Lang = lang
 
 	if err := h.newsService.SetLocalization(r.Context(), id, &req); err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to set localization", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to set localization")
 		return
 	}
 
@@ -269,14 +279,14 @@ func (h *NewsHandler) DeleteLocalization(w http.ResponseWriter, r *http.Request)
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid news ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid news ID")
 		return
 	}
 
 	lang := chi.URLParam(r, "lang")
 
 	if err := h.newsService.DeleteLocalization(r.Context(), id, lang); err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to delete localization", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to delete localization")
 		return
 	}
 
@@ -290,11 +300,11 @@ func (h *NewsHandler) GetAdminBySlug(w http.ResponseWriter, r *http.Request) {
 
 	news, err := h.newsService.GetBySlugAdmin(r.Context(), slug)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to get news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get news")
 		return
 	}
 	if news == nil {
-		response.Error(w, http.StatusNotFound, "News not found", nil)
+		response.Error(w, http.StatusNotFound, "NOT_FOUND", "News not found")
 		return
 	}
 
@@ -331,7 +341,7 @@ func (h *NewsHandler) ListAdmin(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.newsService.List(r.Context(), params)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to list news", err)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list news")
 		return
 	}
 

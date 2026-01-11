@@ -54,26 +54,24 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 	wikiEditRepo := repository.NewWikiEditRepository(db)
 
 	// Инициализация сервисов
-	authService := service.NewAuthService(userRepo, cfg.JWT)
-	novelService := service.NewNovelService(novelRepo)
-	chapterService := service.NewChapterService(chapterRepo)
-	progressService := service.NewProgressService(progressRepo)
+	authService := service.NewAuthService(userRepo, cfg)
 	xpService := service.NewXPService(xpRepo)
+	novelService := service.NewNovelService(novelRepo)
+	chapterService := service.NewChapterService(chapterRepo, novelRepo, progressRepo)
 	commentService := service.NewCommentService(commentRepo, xpService)
 	bookmarkService := service.NewBookmarkService(bookmarkRepo, novelRepo, xpService)
 	ticketService := service.NewTicketService(ticketRepo, subscriptionRepo, log)
 	votingService := service.NewVotingService(votingRepo, ticketRepo, log)
 	subscriptionService := service.NewSubscriptionService(subscriptionRepo, ticketRepo, log)
-	collectionService := service.NewCollectionService(collectionRepo)
-	newsService := service.NewNewsService(newsRepo)
-	wikiEditService := service.NewWikiEditService(wikiEditRepo, subscriptionRepo, novelRepo)
+	collectionService := service.NewCollectionService(collectionRepo, novelRepo, userRepo)
+	newsService := service.NewNewsService(newsRepo, userRepo)
+	wikiEditService := service.NewWikiEditService(wikiEditRepo, novelRepo, userRepo, subscriptionService)
 
 	// Инициализация обработчиков
-	authHandler := handlers.NewAuthHandler(authService, cfg)
+	authHandler := handlers.NewAuthHandler(authService)
 	novelHandler := handlers.NewNovelHandler(novelService)
 	chapterHandler := handlers.NewChapterHandler(chapterService)
-	progressHandler := handlers.NewProgressHandler(progressService)
-	adminHandler := handlers.NewAdminHandler(novelService, chapterService)
+	adminHandler := handlers.NewAdminHandler(novelService, chapterService, "./uploads")
 	commentHandler := handlers.NewCommentHandler(commentService)
 	bookmarkHandler := handlers.NewBookmarkHandler(bookmarkService)
 	walletHandler := handlers.NewWalletHandler(ticketService, log)
@@ -103,7 +101,7 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 			// Аутентификация
 			r.Post("/auth/register", authHandler.Register)
 			r.Post("/auth/login", authHandler.Login)
-			r.Post("/auth/refresh", authHandler.RefreshToken)
+			r.Post("/auth/refresh", authHandler.Refresh)
 
 			// Каталог новелл
 			r.Get("/novels", novelHandler.List)
@@ -114,8 +112,8 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 			r.Get("/chapters/{id}", chapterHandler.GetByID)
 
 			// Теги и жанры
-			r.Get("/genres", novelHandler.ListGenres)
-			r.Get("/tags", novelHandler.ListTags)
+			r.Get("/genres", novelHandler.GetGenres)
+			r.Get("/tags", novelHandler.GetTags)
 
 			// Комментарии (публичное чтение)
 			r.Get("/comments", commentHandler.List)
@@ -158,12 +156,12 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 			r.Use(authMiddleware.Authenticate)
 
 			// Профиль
-			r.Get("/auth/me", authHandler.GetProfile)
+			r.Get("/auth/me", authHandler.Me)
 			r.Post("/auth/logout", authHandler.Logout)
 
-			// Прогресс чтения
-			r.Get("/progress/{novelId}", progressHandler.Get)
-			r.Post("/progress", progressHandler.Save)
+			// Прогресс чтения (через chapterHandler)
+			r.Get("/novels/{slug}/progress", chapterHandler.GetProgress)
+			r.Post("/chapters/{id}/progress", chapterHandler.SaveProgress)
 
 			// Комментарии (защищенные операции)
 			r.Post("/comments", commentHandler.Create)

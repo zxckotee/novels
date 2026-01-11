@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"novels-backend/internal/domain/models"
+	"novels-backend/internal/http/middleware"
 	"novels-backend/internal/service"
 	"novels-backend/pkg/response"
 
@@ -33,7 +34,7 @@ func (h *NovelHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.novelService.List(r.Context(), params)
 	if err != nil {
-		response.InternalError(w, "failed to get novels")
+		response.InternalError(w)
 		return
 	}
 
@@ -53,7 +54,7 @@ func (h *NovelHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.novelService.Search(r.Context(), query, params)
 	if err != nil {
-		response.InternalError(w, "failed to search novels")
+		response.InternalError(w)
 		return
 	}
 
@@ -75,7 +76,7 @@ func (h *NovelHandler) GetBySlug(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w, "novel not found")
 			return
 		}
-		response.InternalError(w, "failed to get novel")
+		response.InternalError(w)
 		return
 	}
 
@@ -93,7 +94,7 @@ func (h *NovelHandler) GetPopular(w http.ResponseWriter, r *http.Request) {
 
 	novels, err := h.novelService.GetPopular(r.Context(), lang, limit)
 	if err != nil {
-		response.InternalError(w, "failed to get popular novels")
+		response.InternalError(w)
 		return
 	}
 
@@ -108,7 +109,7 @@ func (h *NovelHandler) GetLatestUpdates(w http.ResponseWriter, r *http.Request) 
 
 	novels, err := h.novelService.GetLatestUpdates(r.Context(), lang, limit)
 	if err != nil {
-		response.InternalError(w, "failed to get latest updates")
+		response.InternalError(w)
 		return
 	}
 
@@ -123,7 +124,7 @@ func (h *NovelHandler) GetNewReleases(w http.ResponseWriter, r *http.Request) {
 
 	novels, err := h.novelService.GetNewReleases(r.Context(), lang, limit)
 	if err != nil {
-		response.InternalError(w, "failed to get new releases")
+		response.InternalError(w)
 		return
 	}
 
@@ -138,7 +139,7 @@ func (h *NovelHandler) GetTrending(w http.ResponseWriter, r *http.Request) {
 
 	novels, err := h.novelService.GetTrending(r.Context(), lang, limit)
 	if err != nil {
-		response.InternalError(w, "failed to get trending novels")
+		response.InternalError(w)
 		return
 	}
 
@@ -153,7 +154,7 @@ func (h *NovelHandler) GetTopRated(w http.ResponseWriter, r *http.Request) {
 
 	novels, err := h.novelService.GetTopRated(r.Context(), lang, limit)
 	if err != nil {
-		response.InternalError(w, "failed to get top rated novels")
+		response.InternalError(w)
 		return
 	}
 
@@ -163,9 +164,15 @@ func (h *NovelHandler) GetTopRated(w http.ResponseWriter, r *http.Request) {
 // Rate добавляет оценку новелле
 // POST /api/v1/novels/{slug}/rate
 func (h *NovelHandler) Rate(w http.ResponseWriter, r *http.Request) {
-	user := models.GetUserFromContext(r.Context())
-	if user == nil {
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
 		response.Unauthorized(w, "not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Unauthorized(w, "invalid user id")
 		return
 	}
 
@@ -191,12 +198,12 @@ func (h *NovelHandler) Rate(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w, "novel not found")
 			return
 		}
-		response.InternalError(w, "failed to get novel")
+		response.InternalError(w)
 		return
 	}
 
-	if err := h.novelService.Rate(r.Context(), user.ID, novel.ID, req.Value); err != nil {
-		response.InternalError(w, "failed to rate novel")
+	if err := h.novelService.Rate(r.Context(), userID, novel.ID, req.Value); err != nil {
+		response.InternalError(w)
 		return
 	}
 
@@ -206,9 +213,15 @@ func (h *NovelHandler) Rate(w http.ResponseWriter, r *http.Request) {
 // GetUserRating получает оценку пользователя
 // GET /api/v1/novels/{slug}/my-rating
 func (h *NovelHandler) GetUserRating(w http.ResponseWriter, r *http.Request) {
-	user := models.GetUserFromContext(r.Context())
-	if user == nil {
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
 		response.Unauthorized(w, "not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Unauthorized(w, "invalid user id")
 		return
 	}
 
@@ -220,13 +233,13 @@ func (h *NovelHandler) GetUserRating(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w, "novel not found")
 			return
 		}
-		response.InternalError(w, "failed to get novel")
+		response.InternalError(w)
 		return
 	}
 
-	rating, err := h.novelService.GetUserRating(r.Context(), user.ID, novel.ID)
+	rating, err := h.novelService.GetUserRating(r.Context(), userID, novel.ID)
 	if err != nil {
-		response.InternalError(w, "failed to get rating")
+		response.InternalError(w)
 		return
 	}
 
@@ -240,7 +253,7 @@ func (h *NovelHandler) GetGenres(w http.ResponseWriter, r *http.Request) {
 
 	genres, err := h.novelService.GetAllGenres(r.Context(), lang)
 	if err != nil {
-		response.InternalError(w, "failed to get genres")
+		response.InternalError(w)
 		return
 	}
 
@@ -254,7 +267,7 @@ func (h *NovelHandler) GetTags(w http.ResponseWriter, r *http.Request) {
 
 	tags, err := h.novelService.GetAllTags(r.Context(), lang)
 	if err != nil {
-		response.InternalError(w, "failed to get tags")
+		response.InternalError(w)
 		return
 	}
 
@@ -278,25 +291,17 @@ func (h *NovelHandler) parseListParams(r *http.Request) models.NovelListParams {
 
 	// Парсинг жанров
 	if genres := r.URL.Query().Get("genres"); genres != "" {
-		for _, g := range splitAndTrim(genres) {
-			if id, err := uuid.Parse(g); err == nil {
-				params.GenreIDs = append(params.GenreIDs, id)
-			}
-		}
+		params.Genres = splitAndTrim(genres)
 	}
 
 	// Парсинг тегов
 	if tags := r.URL.Query().Get("tags"); tags != "" {
-		for _, t := range splitAndTrim(tags) {
-			if id, err := uuid.Parse(t); err == nil {
-				params.TagIDs = append(params.TagIDs, id)
-			}
-		}
+		params.Tags = splitAndTrim(tags)
 	}
 
 	// Статус перевода
 	if status := r.URL.Query().Get("status"); status != "" {
-		params.TranslationStatus = &status
+		params.Status = []string{status}
 	}
 
 	return params

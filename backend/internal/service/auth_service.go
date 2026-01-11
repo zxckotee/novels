@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -56,29 +58,35 @@ func (s *AuthService) Register(ctx context.Context, req *models.RegisterRequest)
 	}
 
 	// Создаем пользователя
+	now := time.Now()
 	user := &models.User{
 		ID:           uuid.New(),
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
-		Roles:        []string{models.RoleUser},
-	}
-
-	if err := s.userRepo.Create(ctx, user); err != nil {
-		return nil, fmt.Errorf("failed to create user: %w", err)
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
 	// Создаем профиль
 	profile := &models.UserProfile{
 		UserID:      user.ID,
 		DisplayName: req.DisplayName,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
-	if err := s.userRepo.CreateProfile(ctx, profile); err != nil {
-		return nil, fmt.Errorf("failed to create profile: %w", err)
+	if err := s.userRepo.Create(ctx, user, profile); err != nil {
+		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Получаем созданного пользователя с профилем
+	userWithProfile, err := s.userRepo.GetByID(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get created user: %w", err)
 	}
 
 	// Генерируем токены
-	return s.generateTokens(ctx, user)
+	return s.generateTokens(ctx, userWithProfile)
 }
 
 // Login аутентифицирует пользователя
@@ -109,19 +117,11 @@ func (s *AuthService) Login(ctx context.Context, req *models.LoginRequest) (*mod
 
 // RefreshToken обновляет access token по refresh token
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*models.AuthResponse, error) {
-	// Парсим refresh token
-	claims, err := s.parseToken(refreshToken, s.cfg.JWTRefreshSecret)
-	if err != nil {
-		return nil, err
-	}
-
-	// Проверяем, что это refresh token
-	if claims.TokenType != "refresh" {
-		return nil, ErrInvalidToken
-	}
+	// Хешируем токен для поиска в базе
+	tokenHash := hashToken(refreshToken)
 
 	// Проверяем токен в базе
-	storedToken, err := s.userRepo.GetRefreshToken(ctx, refreshToken)
+	storedToken, err := s.userRepo.GetRefreshToken(ctx, tokenHash)
 	if err != nil || storedToken == nil {
 		return nil, ErrInvalidToken
 	}
@@ -132,6 +132,22 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*m
 
 	if storedToken.ExpiresAt.Before(time.Now()) {
 		return nil, ErrTokenExpired
+	}
+
+	// Парсим refresh token для проверки структуры
+	claims, err := s.parseToken(refreshToken, s.cfg.JWT.RefreshSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	// Проверяем, что это refresh token
+	if claims.TokenType != "refresh" {
+		return nil, ErrInvalidToken
+	}
+
+	// Проверяем соответствие UserID
+	if claims.UserID != storedToken.UserID {
+		return nil, ErrInvalidToken
 	}
 
 	// Получаем пользователя
@@ -145,7 +161,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*m
 	}
 
 	// Отзываем старый refresh token
-	_ = s.userRepo.RevokeRefreshToken(ctx, refreshToken)
+	_ = s.userRepo.RevokeRefreshToken(ctx, tokenHash)
 
 	// Генерируем новые токены
 	return s.generateTokens(ctx, user)
@@ -153,17 +169,18 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*m
 
 // Logout отзывает токены пользователя
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
-	return s.userRepo.RevokeRefreshToken(ctx, refreshToken)
+	tokenHash := hashToken(refreshToken)
+	return s.userRepo.RevokeRefreshToken(ctx, tokenHash)
 }
 
 // LogoutAll отзывает все токены пользователя
 func (s *AuthService) LogoutAll(ctx context.Context, userID uuid.UUID) error {
-	return s.userRepo.RevokeAllRefreshTokens(ctx, userID)
+	return s.userRepo.RevokeAllUserTokens(ctx, userID)
 }
 
 // ValidateToken проверяет access token и возвращает claims
 func (s *AuthService) ValidateToken(tokenString string) (*models.JWTClaims, error) {
-	claims, err := s.parseToken(tokenString, s.cfg.JWTSecret)
+	claims, err := s.parseToken(tokenString, s.cfg.JWT.Secret)
 	if err != nil {
 		return nil, err
 	}
@@ -199,13 +216,13 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID uuid.UUID, oldP
 	}
 
 	// Отзываем все токены
-	_ = s.userRepo.RevokeAllRefreshTokens(ctx, userID)
+	_ = s.userRepo.RevokeAllUserTokens(ctx, userID)
 
 	return nil
 }
 
 // generateTokens генерирует пару access и refresh токенов
-func (s *AuthService) generateTokens(ctx context.Context, user *models.User) (*models.AuthResponse, error) {
+func (s *AuthService) generateTokens(ctx context.Context, user *models.UserWithProfile) (*models.AuthResponse, error) {
 	now := time.Now()
 
 	// Access token
@@ -215,14 +232,14 @@ func (s *AuthService) generateTokens(ctx context.Context, user *models.User) (*m
 		Roles:     user.Roles,
 		TokenType: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(now.Add(s.cfg.JWTExpiration)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(s.cfg.JWT.AccessTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			Subject:   user.ID.String(),
 		},
 	}
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
-	accessTokenString, err := accessToken.SignedString([]byte(s.cfg.JWTSecret))
+	accessTokenString, err := accessToken.SignedString([]byte(s.cfg.JWT.Secret))
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign access token: %w", err)
 	}
@@ -232,24 +249,28 @@ func (s *AuthService) generateTokens(ctx context.Context, user *models.User) (*m
 		UserID:    user.ID,
 		TokenType: "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(now.Add(s.cfg.JWTRefreshExpiration)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(s.cfg.JWT.RefreshTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			Subject:   user.ID.String(),
 		},
 	}
 
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	refreshTokenString, err := refreshToken.SignedString([]byte(s.cfg.JWTRefreshSecret))
+	refreshTokenString, err := refreshToken.SignedString([]byte(s.cfg.JWT.RefreshSecret))
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign refresh token: %w", err)
 	}
+
+	// Хешируем токен для сохранения в базе
+	tokenHash := hashToken(refreshTokenString)
 
 	// Сохраняем refresh token в базе
 	tokenRecord := &models.RefreshToken{
 		ID:        uuid.New(),
 		UserID:    user.ID,
-		Token:     refreshTokenString,
-		ExpiresAt: now.Add(s.cfg.JWTRefreshExpiration),
+		TokenHash: tokenHash,
+		ExpiresAt: now.Add(s.cfg.JWT.RefreshTokenTTL),
+		CreatedAt: now,
 	}
 
 	if err := s.userRepo.SaveRefreshToken(ctx, tokenRecord); err != nil {
@@ -259,16 +280,16 @@ func (s *AuthService) generateTokens(ctx context.Context, user *models.User) (*m
 	return &models.AuthResponse{
 		AccessToken:  accessTokenString,
 		RefreshToken: refreshTokenString,
-		ExpiresIn:    int64(s.cfg.JWTExpiration.Seconds()),
+		ExpiresIn:    int64(s.cfg.JWT.AccessTokenTTL.Seconds()),
 		TokenType:    "Bearer",
-		User: &models.UserPublic{
-			ID:          user.ID,
-			Email:       user.Email,
-			DisplayName: user.DisplayName,
-			AvatarURL:   user.AvatarURL,
-			Roles:       user.Roles,
-		},
+		User:         user,
 	}, nil
+}
+
+// hashToken хеширует токен для безопасного хранения
+func hashToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
 }
 
 // parseToken парсит JWT токен

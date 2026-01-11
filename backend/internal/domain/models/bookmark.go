@@ -48,11 +48,11 @@ type Bookmark struct {
 	UpdatedAt time.Time `json:"updatedAt" db:"updated_at"`
 	
 	// Populated from joins
-	Novel        *BookmarkNovel   `json:"novel,omitempty"`
-	List         *BookmarkList    `json:"list,omitempty"`
-	Progress     *ReadingProgress `json:"progress,omitempty"`
-	LatestChapter *ChapterInfo    `json:"latestChapter,omitempty"`
-	HasNewChapter bool            `json:"hasNewChapter"`
+	Novel         *BookmarkNovel          `json:"novel,omitempty"`
+	List          *BookmarkList           `json:"list,omitempty"`
+	Progress      *BookmarkReadingProgress `json:"progress,omitempty"`
+	LatestChapter *ChapterInfo            `json:"latestChapter,omitempty"`
+	HasNewChapter bool                    `json:"hasNewChapter"`
 }
 
 // BookmarkNovel represents minimal novel info for bookmarks
@@ -74,8 +74,8 @@ type ChapterInfo struct {
 	PublishedAt time.Time `json:"publishedAt" db:"published_at"`
 }
 
-// ReadingProgress for bookmark
-type ReadingProgress struct {
+// BookmarkReadingProgress represents reading progress info used in bookmarks context
+type BookmarkReadingProgress struct {
 	ChapterID   uuid.UUID `json:"chapterId" db:"chapter_id"`
 	ChapterNum  int       `json:"chapterNum" db:"chapter_num"`
 	TotalChapters int     `json:"totalChapters" db:"total_chapters"`

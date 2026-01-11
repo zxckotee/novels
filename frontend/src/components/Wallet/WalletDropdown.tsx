@@ -24,7 +24,7 @@ export function WalletDropdown() {
   const { data: wallet, isLoading } = useQuery<WalletInfo>({
     queryKey: ['wallet'],
     queryFn: async () => {
-      const response = await api.get('/wallet');
+      const response = await api.get<WalletInfo>('/wallet');
       return response.data;
     },
     enabled: isAuthenticated,

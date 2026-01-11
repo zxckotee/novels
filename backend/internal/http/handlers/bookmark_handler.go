@@ -3,12 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"novels/internal/domain/models"
-	"novels/internal/http/middleware"
-	"novels/internal/service"
-	"novels/pkg/response"
+	"github.com/google/uuid"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/http/middleware"
+	"novels-backend/internal/service"
+	"novels-backend/pkg/response"
 )
 
 type BookmarkHandler struct {
@@ -32,9 +34,15 @@ func NewBookmarkHandler(bookmarkService *service.BookmarkService) *BookmarkHandl
 // @Success 200 {object} response.Response{data=models.BookmarksResponse}
 // @Router /bookmarks [get]
 func (h *BookmarkHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
@@ -58,7 +66,7 @@ func (h *BookmarkHandler) List(w http.ResponseWriter, r *http.Request) {
 	
 	result, err := h.bookmarkService.List(r.Context(), userID, filter, lang)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "failed to get bookmarks")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get bookmarks")
 		return
 	}
 	
@@ -74,15 +82,21 @@ func (h *BookmarkHandler) List(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} response.Response{data=[]models.BookmarkList}
 // @Router /bookmarks/lists [get]
 func (h *BookmarkHandler) GetLists(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
 	lists, err := h.bookmarkService.GetLists(r.Context(), userID)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "failed to get lists")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get lists")
 		return
 	}
 	
@@ -99,20 +113,26 @@ func (h *BookmarkHandler) GetLists(w http.ResponseWriter, r *http.Request) {
 // @Success 201 {object} response.Response{data=models.Bookmark}
 // @Router /bookmarks [post]
 func (h *BookmarkHandler) Add(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
 	var req models.CreateBookmarkRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
 	
 	if req.NovelID == "" || req.ListCode == "" {
-		response.Error(w, http.StatusBadRequest, "novel_id and list_code are required")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "novel_id and list_code are required")
 		return
 	}
 	
@@ -120,11 +140,11 @@ func (h *BookmarkHandler) Add(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case service.ErrNovelNotFound:
-			response.Error(w, http.StatusNotFound, "novel not found")
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "novel not found")
 		case service.ErrInvalidListCode:
-			response.Error(w, http.StatusBadRequest, "invalid list code")
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid list code")
 		default:
-			response.Error(w, http.StatusInternalServerError, "failed to add bookmark")
+			response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to add bookmark")
 		}
 		return
 	}
@@ -143,33 +163,39 @@ func (h *BookmarkHandler) Add(w http.ResponseWriter, r *http.Request) {
 // @Success 204 "No Content"
 // @Router /bookmarks/{novelId} [put]
 func (h *BookmarkHandler) Update(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
 	novelID := chi.URLParam(r, "novelId")
 	if novelID == "" {
-		response.Error(w, http.StatusBadRequest, "novel_id is required")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "novel_id is required")
 		return
 	}
 	
 	var req models.UpdateBookmarkRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
 	
-	err := h.bookmarkService.UpdateBookmark(r.Context(), userID, novelID, req.ListCode)
+	err = h.bookmarkService.UpdateBookmark(r.Context(), userID, novelID, req.ListCode)
 	if err != nil {
 		switch err {
 		case service.ErrNovelNotFound:
-			response.Error(w, http.StatusNotFound, "bookmark not found")
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "bookmark not found")
 		case service.ErrInvalidListCode:
-			response.Error(w, http.StatusBadRequest, "invalid list code")
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid list code")
 		default:
-			response.Error(w, http.StatusInternalServerError, "failed to update bookmark")
+			response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update bookmark")
 		}
 		return
 	}
@@ -187,21 +213,27 @@ func (h *BookmarkHandler) Update(w http.ResponseWriter, r *http.Request) {
 // @Success 204 "No Content"
 // @Router /bookmarks/{novelId} [delete]
 func (h *BookmarkHandler) Remove(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
 	novelID := chi.URLParam(r, "novelId")
 	if novelID == "" {
-		response.Error(w, http.StatusBadRequest, "novel_id is required")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "novel_id is required")
 		return
 	}
 	
-	err := h.bookmarkService.RemoveBookmark(r.Context(), userID, novelID)
+	err = h.bookmarkService.RemoveBookmark(r.Context(), userID, novelID)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "failed to remove bookmark")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to remove bookmark")
 		return
 	}
 	
@@ -217,15 +249,21 @@ func (h *BookmarkHandler) Remove(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} response.Response{data=[]models.BookmarkListStats}
 // @Router /bookmarks/stats [get]
 func (h *BookmarkHandler) GetStats(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
 	stats, err := h.bookmarkService.GetStats(r.Context(), userID)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "failed to get stats")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get stats")
 		return
 	}
 	
@@ -242,26 +280,47 @@ func (h *BookmarkHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} response.Response{data=map[string]string}
 // @Router /bookmarks/status/{novelId} [get]
 func (h *BookmarkHandler) GetNovelStatus(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.JSON(w, http.StatusOK, map[string]interface{}{"list": nil})
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
 		response.JSON(w, http.StatusOK, map[string]interface{}{"list": nil})
 		return
 	}
 	
 	novelIDStr := chi.URLParam(r, "novelId")
-	novelID, err := parseUUID(novelIDStr)
+	novelID, err := uuid.Parse(novelIDStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid novel_id")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid novel_id")
 		return
 	}
 	
 	listCode, err := h.bookmarkService.GetBookmarkStatus(r.Context(), userID, novelID)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "failed to get status")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get status")
 		return
 	}
 	
 	response.JSON(w, http.StatusOK, map[string]interface{}{
 		"list": listCode,
 	})
+}
+
+// parseIntQuery парсит query параметр в int
+func parseIntQuery(r *http.Request, key string, defaultValue int) int {
+	valueStr := r.URL.Query().Get(key)
+	if valueStr == "" {
+		return defaultValue
+	}
+	
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		return defaultValue
+	}
+	
+	return value
 }

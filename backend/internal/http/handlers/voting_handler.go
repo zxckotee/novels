@@ -7,10 +7,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/novels/backend/internal/domain/models"
-	"github.com/novels/backend/internal/http/middleware"
-	"github.com/novels/backend/internal/service"
-	"github.com/novels/backend/pkg/response"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/http/middleware"
+	"novels-backend/internal/service"
+	"novels-backend/pkg/response"
 	"github.com/rs/zerolog"
 )
 
@@ -33,44 +33,50 @@ func NewVotingHandler(votingService *service.VotingService, logger zerolog.Logge
 // CreateProposal creates a new novel proposal
 // POST /api/v1/proposals
 func (h *VotingHandler) CreateProposal(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 	
 	var req models.CreateProposalRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
 	
 	// Validate
 	if req.OriginalLink == "" {
-		response.Error(w, http.StatusBadRequest, "original_link is required", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "original_link is required")
 		return
 	}
 	if req.Title == "" {
-		response.Error(w, http.StatusBadRequest, "title is required", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "title is required")
 		return
 	}
 	if req.Description == "" || len(req.Description) < 100 {
-		response.Error(w, http.StatusBadRequest, "description must be at least 100 characters", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "description must be at least 100 characters")
 		return
 	}
 	if len(req.Genres) == 0 {
-		response.Error(w, http.StatusBadRequest, "at least one genre is required", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "at least one genre is required")
 		return
 	}
 	
 	proposal, err := h.votingService.CreateProposal(r.Context(), userID, req)
 	if err != nil {
 		if err == service.ErrInsufficientTickets {
-			response.Error(w, http.StatusPaymentRequired, "insufficient novel request tickets", nil)
+			response.Error(w, http.StatusPaymentRequired, "PAYMENT_REQUIRED", "Insufficient novel request tickets")
 			return
 		}
 		h.logger.Error().Err(err).Msg("Failed to create proposal")
-		response.Error(w, http.StatusInternalServerError, "failed to create proposal", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to create proposal")
 		return
 	}
 	
@@ -83,23 +89,25 @@ func (h *VotingHandler) GetProposal(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid proposal ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid proposal ID")
 		return
 	}
 	
 	var currentUserID *uuid.UUID
-	if uid, ok := middleware.GetUserID(r.Context()); ok {
-		currentUserID = &uid
+	if uidStr := middleware.GetUserID(r.Context()); uidStr != "" {
+		if uid, err := uuid.Parse(uidStr); err == nil {
+			currentUserID = &uid
+		}
 	}
 	
 	proposal, err := h.votingService.GetProposal(r.Context(), id, currentUserID)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get proposal")
-		response.Error(w, http.StatusInternalServerError, "failed to get proposal", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get proposal")
 		return
 	}
 	if proposal == nil {
-		response.Error(w, http.StatusNotFound, "proposal not found", nil)
+		response.Error(w, http.StatusNotFound, "NOT_FOUND", "Proposal not found")
 		return
 	}
 	
@@ -134,7 +142,7 @@ func (h *VotingHandler) ListProposals(w http.ResponseWriter, r *http.Request) {
 	proposals, err := h.votingService.ListProposals(r.Context(), filter)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to list proposals")
-		response.Error(w, http.StatusInternalServerError, "failed to list proposals", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list proposals")
 		return
 	}
 	
@@ -144,9 +152,15 @@ func (h *VotingHandler) ListProposals(w http.ResponseWriter, r *http.Request) {
 // GetMyProposals returns the current user's proposals
 // GET /api/v1/proposals/my
 func (h *VotingHandler) GetMyProposals(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 	
@@ -163,7 +177,7 @@ func (h *VotingHandler) GetMyProposals(w http.ResponseWriter, r *http.Request) {
 	proposals, err := h.votingService.GetMyProposals(r.Context(), userID, page, limit)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get my proposals")
-		response.Error(w, http.StatusInternalServerError, "failed to get proposals", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get proposals")
 		return
 	}
 	
@@ -173,33 +187,39 @@ func (h *VotingHandler) GetMyProposals(w http.ResponseWriter, r *http.Request) {
 // UpdateProposal updates a proposal
 // PUT /api/v1/proposals/{id}
 func (h *VotingHandler) UpdateProposal(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 	
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid proposal ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid proposal ID")
 		return
 	}
 	
 	var req models.UpdateProposalRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
 	
 	proposal, err := h.votingService.UpdateProposal(r.Context(), id, userID, req)
 	if err != nil {
 		if err == service.ErrProposalNotFound {
-			response.Error(w, http.StatusNotFound, "proposal not found", nil)
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "Proposal not found")
 			return
 		}
 		h.logger.Error().Err(err).Msg("Failed to update proposal")
-		response.Error(w, http.StatusBadRequest, err.Error(), nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
 	
@@ -209,23 +229,29 @@ func (h *VotingHandler) UpdateProposal(w http.ResponseWriter, r *http.Request) {
 // SubmitProposal submits a proposal for moderation
 // POST /api/v1/proposals/{id}/submit
 func (h *VotingHandler) SubmitProposal(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 	
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid proposal ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid proposal ID")
 		return
 	}
 	
 	err = h.votingService.SubmitProposal(r.Context(), id, userID)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to submit proposal")
-		response.Error(w, http.StatusBadRequest, err.Error(), nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
 	
@@ -235,23 +261,29 @@ func (h *VotingHandler) SubmitProposal(w http.ResponseWriter, r *http.Request) {
 // DeleteProposal deletes a proposal
 // DELETE /api/v1/proposals/{id}
 func (h *VotingHandler) DeleteProposal(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 	
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid proposal ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid proposal ID")
 		return
 	}
 	
 	err = h.votingService.DeleteProposal(r.Context(), id, userID)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to delete proposal")
-		response.Error(w, http.StatusBadRequest, err.Error(), nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
 	
@@ -265,34 +297,40 @@ func (h *VotingHandler) DeleteProposal(w http.ResponseWriter, r *http.Request) {
 // ModerateProposal approves or rejects a proposal
 // POST /api/v1/moderation/proposals/{id}
 func (h *VotingHandler) ModerateProposal(w http.ResponseWriter, r *http.Request) {
-	moderatorID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized", nil)
+	moderatorIDStr := middleware.GetUserID(r.Context())
+	if moderatorIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	moderatorID, err := uuid.Parse(moderatorIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 	
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid proposal ID", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid proposal ID")
 		return
 	}
 	
 	var req models.ModerateProposalRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
 	
 	if req.Action != "approve" && req.Action != "reject" {
-		response.Error(w, http.StatusBadRequest, "action must be 'approve' or 'reject'", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "action must be 'approve' or 'reject'")
 		return
 	}
 	
 	err = h.votingService.ModerateProposal(r.Context(), id, moderatorID, req)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to moderate proposal")
-		response.Error(w, http.StatusBadRequest, err.Error(), nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
 	
@@ -318,7 +356,7 @@ func (h *VotingHandler) GetPendingProposals(w http.ResponseWriter, r *http.Reque
 	proposals, err := h.votingService.ListProposals(r.Context(), filter)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get pending proposals")
-		response.Error(w, http.StatusInternalServerError, "failed to get proposals", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get proposals")
 		return
 	}
 	
@@ -332,52 +370,58 @@ func (h *VotingHandler) GetPendingProposals(w http.ResponseWriter, r *http.Reque
 // CastVote casts a vote for a proposal
 // POST /api/v1/votes
 func (h *VotingHandler) CastVote(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized", nil)
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
 		return
 	}
 	
 	var req models.CastVoteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid request body")
 		return
 	}
 	
 	// Validate
 	if req.ProposalID == "" {
-		response.Error(w, http.StatusBadRequest, "proposal_id is required", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "proposal_id is required")
 		return
 	}
 	if req.Amount < 1 {
-		response.Error(w, http.StatusBadRequest, "amount must be positive", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "amount must be positive")
 		return
 	}
 	if req.TicketType != models.TicketTypeDailyVote && req.TicketType != models.TicketTypeTranslationTicket {
-		response.Error(w, http.StatusBadRequest, "ticket_type must be 'daily_vote' or 'translation_ticket'", nil)
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "ticket_type must be 'daily_vote' or 'translation_ticket'")
 		return
 	}
 	
-	err := h.votingService.CastVote(r.Context(), userID, req)
+	err = h.votingService.CastVote(r.Context(), userID, req)
 	if err != nil {
 		if err == service.ErrInsufficientTickets {
-			response.Error(w, http.StatusPaymentRequired, "insufficient tickets", nil)
+			response.Error(w, http.StatusPaymentRequired, "PAYMENT_REQUIRED", "Insufficient tickets")
 			return
 		}
 		if err == service.ErrProposalNotFound {
-			response.Error(w, http.StatusNotFound, "proposal not found", nil)
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "Proposal not found")
 			return
 		}
 		if err == service.ErrProposalNotVoting {
-			response.Error(w, http.StatusBadRequest, "proposal is not in voting status", nil)
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Proposal is not in voting status")
 			return
 		}
 		if err == service.ErrCannotVoteOwnProposal {
-			response.Error(w, http.StatusBadRequest, "cannot vote for your own proposal", nil)
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Cannot vote for your own proposal")
 			return
 		}
 		h.logger.Error().Err(err).Msg("Failed to cast vote")
-		response.Error(w, http.StatusInternalServerError, "failed to cast vote", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to cast vote")
 		return
 	}
 	
@@ -395,7 +439,7 @@ func (h *VotingHandler) GetVotingLeaderboard(w http.ResponseWriter, r *http.Requ
 	leaderboard, err := h.votingService.GetVotingLeaderboard(r.Context(), limit)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get voting leaderboard")
-		response.Error(w, http.StatusInternalServerError, "failed to get leaderboard", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get leaderboard")
 		return
 	}
 	
@@ -408,7 +452,7 @@ func (h *VotingHandler) GetVotingStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := h.votingService.GetVotingStats(r.Context())
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get voting stats")
-		response.Error(w, http.StatusInternalServerError, "failed to get stats", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get stats")
 		return
 	}
 	
@@ -439,7 +483,7 @@ func (h *VotingHandler) GetVotingProposals(w http.ResponseWriter, r *http.Reques
 	proposals, err := h.votingService.ListProposals(r.Context(), filter)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get voting proposals")
-		response.Error(w, http.StatusInternalServerError, "failed to get proposals", nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get proposals")
 		return
 	}
 	

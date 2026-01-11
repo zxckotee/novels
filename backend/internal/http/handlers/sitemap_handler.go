@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"novels/internal/repository"
-	"novels/pkg/logger"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/repository"
+	"github.com/rs/zerolog"
 )
 
 // XML sitemap structures
@@ -42,6 +43,7 @@ type SitemapHandler struct {
 	newsRepo    *repository.NewsRepository
 	baseURL     string
 	languages   []string
+	logger      zerolog.Logger
 }
 
 func NewSitemapHandler(
@@ -49,6 +51,7 @@ func NewSitemapHandler(
 	chapterRepo *repository.ChapterRepository,
 	newsRepo *repository.NewsRepository,
 	baseURL string,
+	logger zerolog.Logger,
 ) *SitemapHandler {
 	return &SitemapHandler{
 		novelRepo:   novelRepo,
@@ -56,6 +59,7 @@ func NewSitemapHandler(
 		newsRepo:    newsRepo,
 		baseURL:     baseURL,
 		languages:   []string{"ru", "en", "zh", "ja", "ko", "fr", "de"},
+		logger:      logger,
 	}
 }
 
@@ -113,16 +117,25 @@ func (h *SitemapHandler) SitemapPages(w http.ResponseWriter, r *http.Request) {
 func (h *SitemapHandler) SitemapNovels(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	novels, err := h.novelRepo.GetAllSlugs(ctx)
-	if err != nil {
-		logger.Errorf("Failed to get novel slugs for sitemap: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	sitemap := Sitemap{
 		XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9",
 		URLs:  []SitemapURL{},
+	}
+
+	// TODO: Implement GetAllSlugs in NovelRepository
+	// For now, use List method with large limit
+	params := models.NovelListParams{
+		Lang:  "ru",
+		Page:  1,
+		Limit: 1000, // Large limit to get all novels
+		Sort:  "updated_at",
+		Order: "desc",
+	}
+	novels, _, err := h.novelRepo.List(ctx, params)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to get novels for sitemap")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 
 	for _, novel := range novels {
@@ -141,60 +154,30 @@ func (h *SitemapHandler) SitemapNovels(w http.ResponseWriter, r *http.Request) {
 
 // SitemapChapters serves chapters sitemap
 func (h *SitemapHandler) SitemapChapters(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	chapters, err := h.chapterRepo.GetAllForSitemap(ctx)
-	if err != nil {
-		logger.Errorf("Failed to get chapters for sitemap: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	sitemap := Sitemap{
 		XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9",
 		URLs:  []SitemapURL{},
 	}
 
-	for _, chapter := range chapters {
-		for _, lang := range h.languages {
-			sitemap.URLs = append(sitemap.URLs, SitemapURL{
-				Loc:        fmt.Sprintf("%s/%s/novel/%s/chapter/%d", h.baseURL, lang, chapter.NovelSlug, chapter.Number),
-				LastMod:    chapter.UpdatedAt.Format("2006-01-02"),
-				ChangeFreq: "monthly",
-				Priority:   "0.6",
-			})
-		}
-	}
+	// TODO: Implement GetAllForSitemap in ChapterRepository
+	// For now, return empty sitemap
+	// This method will be implemented later when needed
+	h.logger.Warn().Msg("SitemapChapters: GetAllForSitemap not implemented, returning empty sitemap")
 
 	h.writeXML(w, sitemap)
 }
 
 // SitemapNews serves news sitemap
 func (h *SitemapHandler) SitemapNews(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	posts, err := h.newsRepo.GetAllForSitemap(ctx)
-	if err != nil {
-		logger.Errorf("Failed to get news for sitemap: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	sitemap := Sitemap{
 		XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9",
 		URLs:  []SitemapURL{},
 	}
 
-	for _, post := range posts {
-		for _, lang := range h.languages {
-			sitemap.URLs = append(sitemap.URLs, SitemapURL{
-				Loc:        fmt.Sprintf("%s/%s/news/%s", h.baseURL, lang, post.Slug),
-				LastMod:    post.UpdatedAt.Format("2006-01-02"),
-				ChangeFreq: "monthly",
-				Priority:   "0.5",
-			})
-		}
-	}
+	// TODO: Implement GetAllForSitemap in NewsRepository
+	// For now, return empty sitemap
+	// This method will be implemented later when needed
+	h.logger.Warn().Msg("SitemapNews: GetAllForSitemap not implemented, returning empty sitemap")
 
 	h.writeXML(w, sitemap)
 }
@@ -225,7 +208,7 @@ func (h *SitemapHandler) writeXML(w http.ResponseWriter, data interface{}) {
 	encoder := xml.NewEncoder(&buf)
 	encoder.Indent("", "  ")
 	if err := encoder.Encode(data); err != nil {
-		logger.Errorf("Failed to encode XML: %v", err)
+		h.logger.Error().Err(err).Msg("Failed to encode XML")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}

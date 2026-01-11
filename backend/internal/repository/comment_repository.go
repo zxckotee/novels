@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"novels/internal/domain/models"
+	"novels-backend/internal/domain/models"
 )
 
 type CommentRepository struct {

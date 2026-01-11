@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, unstable_setRequestLocale } from 'next-intl/server';
 import NovelPageClient from './NovelPageClient';
 
 // Generate metadata for SEO
@@ -27,5 +27,6 @@ export default function NovelPage({
 }: {
   params: { locale: string; slug: string };
 }) {
+  unstable_setRequestLocale(params.locale);
   return <NovelPageClient slug={params.slug} locale={params.locale} />;
 }

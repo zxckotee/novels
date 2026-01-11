@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -70,9 +71,11 @@ type LoginRequest struct {
 
 // AuthResponse представляет ответ на успешную аутентификацию
 type AuthResponse struct {
-	User        *UserWithProfile `json:"user"`
-	AccessToken string           `json:"access_token"`
-	ExpiresIn   int              `json:"expires_in"` // в секундах
+	User         *UserWithProfile `json:"user"`
+	AccessToken  string           `json:"access_token"`
+	RefreshToken string           `json:"refresh_token"`
+	TokenType    string           `json:"token_type"`
+	ExpiresIn    int64            `json:"expires_in"` // в секундах
 }
 
 // UserResponse представляет публичную информацию о пользователе
@@ -84,4 +87,21 @@ type UserResponse struct {
 	Bio         *string    `json:"bio,omitempty"`
 	Roles       []UserRole `json:"roles"`
 	CreatedAt   time.Time  `json:"created_at"`
+}
+
+// UserPublic представляет публичную информацию о пользователе,
+// используемую в различных доменных моделях (новости, коллекции и т.п.)
+type UserPublic struct {
+	ID          uuid.UUID `json:"id"`
+	DisplayName string    `json:"displayName"`
+	AvatarURL   *string   `json:"avatarUrl,omitempty"`
+}
+
+// JWTClaims представляет claims JWT токена
+type JWTClaims struct {
+	UserID    uuid.UUID  `json:"user_id"`
+	Email     string     `json:"email,omitempty"`
+	Roles     []UserRole `json:"roles,omitempty"`
+	TokenType string     `json:"token_type"`
+	jwt.RegisteredClaims
 }

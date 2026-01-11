@@ -37,7 +37,7 @@ func NewChapterService(
 }
 
 // ListByNovel получает список глав новеллы
-func (s *ChapterService) ListByNovel(ctx context.Context, novelSlug string, params models.ChapterListParams) (*models.ChapterListResponse, error) {
+func (s *ChapterService) ListByNovel(ctx context.Context, novelSlug string, params models.ChapterListParams) (*models.ChaptersListResponse, error) {
 	// Устанавливаем значения по умолчанию
 	if params.Limit <= 0 {
 		params.Limit = 50
@@ -48,9 +48,6 @@ func (s *ChapterService) ListByNovel(ctx context.Context, novelSlug string, para
 	if params.Page <= 0 {
 		params.Page = 1
 	}
-	if params.Lang == "" {
-		params.Lang = "ru"
-	}
 	if params.Sort == "" {
 		params.Sort = "number"
 	}
@@ -58,7 +55,7 @@ func (s *ChapterService) ListByNovel(ctx context.Context, novelSlug string, para
 		params.Order = "asc"
 	}
 
-	chapters, novel, total, err := s.chapterRepo.ListByNovel(ctx, novelSlug, params)
+	chapters, novel, _, err := s.chapterRepo.ListByNovel(ctx, novelSlug, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list chapters: %w", err)
 	}
@@ -67,20 +64,9 @@ func (s *ChapterService) ListByNovel(ctx context.Context, novelSlug string, para
 		return nil, ErrNovelNotFound
 	}
 
-	totalPages := total / params.Limit
-	if total%params.Limit > 0 {
-		totalPages++
-	}
-
-	return &models.ChapterListResponse{
+	return &models.ChaptersListResponse{
 		Novel:    novel,
 		Chapters: chapters,
-		Pagination: models.Pagination{
-			Page:       params.Page,
-			Limit:      params.Limit,
-			Total:      total,
-			TotalPages: totalPages,
-		},
 	}, nil
 }
 

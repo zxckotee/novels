@@ -35,6 +35,18 @@ interface ProposalFormData {
   coverUrl: string;
 }
 
+interface WalletInfo {
+  userId: string;
+  dailyVotes: number;
+  novelRequests: number;
+  translationTickets: number;
+  nextDailyReset: string;
+}
+
+interface ProposalResponse {
+  id: string;
+}
+
 export default function ProposalFormClient() {
   const t = useTranslations('proposals');
   const router = useRouter();
@@ -54,21 +66,21 @@ export default function ProposalFormClient() {
   const [step, setStep] = useState(1);
 
   // Check wallet for Novel Request tickets
-  const { data: wallet } = useQuery({
+  const { data: wallet } = useQuery<WalletInfo>({
     queryKey: ['wallet'],
     queryFn: async () => {
-      const response = await api.get('/wallet');
+      const response = await api.get<WalletInfo>('/wallet');
       return response.data;
     },
     enabled: isAuthenticated,
   });
 
-  const hasTicket = wallet?.novelRequests > 0;
+  const hasTicket = (wallet?.novelRequests ?? 0) > 0;
 
   // Submit proposal
-  const submitMutation = useMutation({
+  const submitMutation = useMutation<ProposalResponse, unknown, ProposalFormData>({
     mutationFn: async (data: ProposalFormData) => {
-      const response = await api.post('/proposals', data);
+      const response = await api.post<ProposalResponse>('/proposals', data);
       return response.data;
     },
     onSuccess: (data) => {

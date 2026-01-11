@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, unstable_setRequestLocale } from 'next-intl/server';
 import ModerationEditRequestsClient from './ModerationEditRequestsClient';
 
 interface PageProps {
@@ -13,5 +13,6 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function ModerationEditRequestsPage({ params }: PageProps) {
+  unstable_setRequestLocale(params.locale);
   return <ModerationEditRequestsClient locale={params.locale} />;
 }

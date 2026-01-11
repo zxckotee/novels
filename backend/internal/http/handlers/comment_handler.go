@@ -6,10 +6,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"novels/internal/domain/models"
-	"novels/internal/http/middleware"
-	"novels/internal/service"
-	"novels/pkg/response"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/http/middleware"
+	"novels-backend/internal/service"
+	"novels-backend/pkg/response"
 )
 
 type CommentHandler struct {
@@ -41,13 +41,13 @@ func (h *CommentHandler) List(w http.ResponseWriter, r *http.Request) {
 	sort := r.URL.Query().Get("sort")
 	
 	if targetType == "" || targetIDStr == "" {
-		response.Error(w, http.StatusBadRequest, "target_type and target_id are required")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "target_type and target_id are required")
 		return
 	}
 	
 	targetID, err := uuid.Parse(targetIDStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid target_id")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid target_id")
 		return
 	}
 	
@@ -68,14 +68,16 @@ func (h *CommentHandler) List(w http.ResponseWriter, r *http.Request) {
 	
 	// Get viewer ID if logged in
 	var viewerID *uuid.UUID
-	userID, ok := middleware.GetUserID(r.Context())
-	if ok {
-		viewerID = &userID
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr != "" {
+		if userID, err := uuid.Parse(userIDStr); err == nil {
+			viewerID = &userID
+		}
 	}
 	
 	result, err := h.commentService.List(r.Context(), filter, viewerID)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "failed to get comments")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get comments")
 		return
 	}
 	
@@ -95,23 +97,25 @@ func (h *CommentHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid comment id")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid comment id")
 		return
 	}
 	
 	var viewerID *uuid.UUID
-	userID, ok := middleware.GetUserID(r.Context())
-	if ok {
-		viewerID = &userID
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr != "" {
+		if userID, err := uuid.Parse(userIDStr); err == nil {
+			viewerID = &userID
+		}
 	}
 	
 	comment, err := h.commentService.GetByID(r.Context(), id, viewerID)
 	if err != nil {
 		if err == service.ErrCommentNotFound {
-			response.Error(w, http.StatusNotFound, "comment not found")
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "comment not found")
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "failed to get comment")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get comment")
 		return
 	}
 	
@@ -128,25 +132,31 @@ func (h *CommentHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Success 201 {object} response.Response{data=models.Comment}
 // @Router /comments [post]
 func (h *CommentHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
 	var req models.CreateCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
 	
 	// Validate
 	if req.Body == "" {
-		response.Error(w, http.StatusBadRequest, "body is required")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "body is required")
 		return
 	}
 	if req.TargetType == "" || req.TargetID == "" {
-		response.Error(w, http.StatusBadRequest, "target_type and target_id are required")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "target_type and target_id are required")
 		return
 	}
 	
@@ -154,13 +164,13 @@ func (h *CommentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case service.ErrInvalidParent:
-			response.Error(w, http.StatusBadRequest, "invalid parent comment")
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid parent comment")
 		case service.ErrCommentDeleted:
-			response.Error(w, http.StatusBadRequest, "cannot reply to deleted comment")
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "cannot reply to deleted comment")
 		case service.ErrMaxDepthExceeded:
-			response.Error(w, http.StatusBadRequest, "maximum reply depth exceeded")
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "maximum reply depth exceeded")
 		default:
-			response.Error(w, http.StatusInternalServerError, "failed to create comment")
+			response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create comment")
 		}
 		return
 	}
@@ -179,22 +189,28 @@ func (h *CommentHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} response.Response{data=models.Comment}
 // @Router /comments/{id} [put]
 func (h *CommentHandler) Update(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid comment id")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid comment id")
 		return
 	}
 	
 	var req models.UpdateCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
 	
@@ -202,13 +218,13 @@ func (h *CommentHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case service.ErrCommentNotFound:
-			response.Error(w, http.StatusNotFound, "comment not found")
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "comment not found")
 		case service.ErrCommentNotOwned:
-			response.Error(w, http.StatusForbidden, "you can only edit your own comments")
+			response.Error(w, http.StatusForbidden, "FORBIDDEN", "you can only edit your own comments")
 		case service.ErrCommentDeleted:
-			response.Error(w, http.StatusBadRequest, "cannot edit deleted comment")
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "cannot edit deleted comment")
 		default:
-			response.Error(w, http.StatusInternalServerError, "failed to update comment")
+			response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update comment")
 		}
 		return
 	}
@@ -226,32 +242,38 @@ func (h *CommentHandler) Update(w http.ResponseWriter, r *http.Request) {
 // @Success 204 "No Content"
 // @Router /comments/{id} [delete]
 func (h *CommentHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid comment id")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid comment id")
 		return
 	}
 	
 	// Check if user is admin
-	role, _ := middleware.GetUserRole(r.Context())
-	isAdmin := role == models.RoleAdmin || role == models.RoleModerator
+	role := middleware.GetUserRole(r.Context())
+	isAdmin := role == string(models.RoleAdmin) || role == string(models.RoleModerator)
 	
 	err = h.commentService.Delete(r.Context(), id, userID, isAdmin)
 	if err != nil {
 		switch err {
 		case service.ErrCommentNotFound:
-			response.Error(w, http.StatusNotFound, "comment not found")
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "comment not found")
 		case service.ErrCommentNotOwned:
-			response.Error(w, http.StatusForbidden, "you can only delete your own comments")
+			response.Error(w, http.StatusForbidden, "FORBIDDEN", "you can only delete your own comments")
 		default:
-			response.Error(w, http.StatusInternalServerError, "failed to delete comment")
+			response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to delete comment")
 		}
 		return
 	}
@@ -270,27 +292,33 @@ func (h *CommentHandler) Delete(w http.ResponseWriter, r *http.Request) {
 // @Success 204 "No Content"
 // @Router /comments/{id}/vote [post]
 func (h *CommentHandler) Vote(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid comment id")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid comment id")
 		return
 	}
 	
 	var req models.VoteCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
 	
 	if req.Value != 1 && req.Value != -1 {
-		response.Error(w, http.StatusBadRequest, "value must be 1 or -1")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "value must be 1 or -1")
 		return
 	}
 	
@@ -298,13 +326,13 @@ func (h *CommentHandler) Vote(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case service.ErrCommentNotFound:
-			response.Error(w, http.StatusNotFound, "comment not found")
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "comment not found")
 		case service.ErrCommentDeleted:
-			response.Error(w, http.StatusBadRequest, "cannot vote on deleted comment")
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "cannot vote on deleted comment")
 		case service.ErrCannotVoteOwnComment:
-			response.Error(w, http.StatusBadRequest, "cannot vote on your own comment")
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "cannot vote on your own comment")
 		default:
-			response.Error(w, http.StatusInternalServerError, "failed to vote")
+			response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to vote")
 		}
 		return
 	}
@@ -323,37 +351,43 @@ func (h *CommentHandler) Vote(w http.ResponseWriter, r *http.Request) {
 // @Success 204 "No Content"
 // @Router /comments/{id}/report [post]
 func (h *CommentHandler) Report(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "unauthorized")
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid user id")
 		return
 	}
 	
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid comment id")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid comment id")
 		return
 	}
 	
 	var req models.ReportCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
 	
 	if len(req.Reason) < 10 {
-		response.Error(w, http.StatusBadRequest, "reason must be at least 10 characters")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "reason must be at least 10 characters")
 		return
 	}
 	
 	err = h.commentService.Report(r.Context(), id, userID, req.Reason)
 	if err != nil {
 		if err == service.ErrCommentNotFound {
-			response.Error(w, http.StatusNotFound, "comment not found")
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "comment not found")
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "failed to report comment")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to report comment")
 		return
 	}
 	
@@ -374,21 +408,23 @@ func (h *CommentHandler) GetReplies(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid comment id")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid comment id")
 		return
 	}
 	
 	limit := parseIntQuery(r, "limit", 10)
 	
 	var viewerID *uuid.UUID
-	userID, ok := middleware.GetUserID(r.Context())
-	if ok {
-		viewerID = &userID
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr != "" {
+		if userID, err := uuid.Parse(userIDStr); err == nil {
+			viewerID = &userID
+		}
 	}
 	
 	replies, err := h.commentService.GetReplies(r.Context(), id, limit, viewerID)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "failed to get replies")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get replies")
 		return
 	}
 	

@@ -49,7 +49,7 @@ export default function SubscriptionsPageClient() {
   const { data: plans, isLoading: plansLoading } = useQuery<SubscriptionPlan[]>({
     queryKey: ['subscription-plans'],
     queryFn: async () => {
-      const response = await api.get('/subscriptions/plans');
+      const response = await api.get<SubscriptionPlan[]>('/subscriptions/plans');
       return response.data;
     },
   });
@@ -58,7 +58,7 @@ export default function SubscriptionsPageClient() {
   const { data: subscription, isLoading: subLoading } = useQuery<Subscription>({
     queryKey: ['my-subscription'],
     queryFn: async () => {
-      const response = await api.get('/subscriptions/current');
+      const response = await api.get<Subscription>('/subscriptions/current');
       return response.data;
     },
     enabled: isAuthenticated,

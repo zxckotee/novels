@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"novels/internal/domain/models"
+	"novels-backend/internal/domain/models"
 )
 
 type BookmarkRepository struct {
@@ -301,7 +301,7 @@ func (r *BookmarkRepository) List(ctx context.Context, filter models.BookmarksFi
 		b.HasNewChapter = hasNew
 		
 		if progressChapterID != nil {
-			b.Progress = &models.ReadingProgress{
+			b.Progress = &models.BookmarkReadingProgress{
 				ChapterID: *progressChapterID,
 			}
 			if progressChapterNum != nil {

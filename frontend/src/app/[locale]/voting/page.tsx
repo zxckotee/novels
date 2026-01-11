@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, unstable_setRequestLocale } from 'next-intl/server';
 import VotingPageClient from './VotingPageClient';
 
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }): Promise<Metadata> {
@@ -11,6 +11,7 @@ export async function generateMetadata({ params: { locale } }: { params: { local
   };
 }
 
-export default async function VotingPage() {
+export default async function VotingPage({ params: { locale } }: { params: { locale: string } }) {
+  unstable_setRequestLocale(locale);
   return <VotingPageClient />;
 }

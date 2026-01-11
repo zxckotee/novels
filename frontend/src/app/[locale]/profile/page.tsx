@@ -98,7 +98,9 @@ export default function ProfilePage() {
             <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
               <h1 className="text-2xl font-heading font-bold">{profile.displayName}</h1>
               {profile.role === 'premium' && (
-                <Crown className="w-5 h-5 text-accent-warning" title="Premium" />
+                <span title="Premium">
+                  <Crown className="w-5 h-5 text-accent-warning" />
+                </span>
               )}
               {profile.role === 'moderator' && (
                 <span className="bg-status-info/20 text-status-info text-xs px-2 py-0.5 rounded">Модератор</span>

@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, unstable_setRequestLocale } from 'next-intl/server';
 import BookmarksPageClient from './BookmarksPageClient';
 
 interface Props {
@@ -18,6 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BookmarksPage({ params }: Props) {
   const { locale } = await params;
+  unstable_setRequestLocale(locale);
   
   return <BookmarksPageClient locale={locale} />;
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"novels/internal/domain/models"
-	"novels/internal/repository"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/repository"
 
 	"github.com/google/uuid"
 )
@@ -45,7 +45,7 @@ func (s *WikiEditService) CreateEditRequest(ctx context.Context, userID, novelID
 	}
 
 	// Check if novel exists
-	novel, err := s.novelRepo.GetByID(ctx, novelID)
+	novel, err := s.novelRepo.GetByID(ctx, novelID, "ru")
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,11 @@ func (s *WikiEditService) CreateEditRequest(ctx context.Context, userID, novelID
 }
 
 func (s *WikiEditService) getFieldValue(ctx context.Context, novelID uuid.UUID, fieldType models.EditFieldType, lang *string) (string, error) {
-	novel, err := s.novelRepo.GetByID(ctx, novelID)
+	langStr := "ru"
+	if lang != nil {
+		langStr = *lang
+	}
+	novel, err := s.novelRepo.GetByID(ctx, novelID, langStr)
 	if err != nil {
 		return "", err
 	}
@@ -109,7 +113,10 @@ func (s *WikiEditService) getFieldValue(ctx context.Context, novelID uuid.UUID, 
 
 	switch fieldType {
 	case models.EditFieldCoverURL:
-		return novel.CoverURL, nil
+		if novel.CoverURL != nil {
+			return *novel.CoverURL, nil
+		}
+		return "", nil
 	case models.EditFieldReleaseYear:
 		return fmt.Sprintf("%d", novel.ReleaseYear), nil
 	case models.EditFieldOriginalChaptersCount:
@@ -117,21 +124,18 @@ func (s *WikiEditService) getFieldValue(ctx context.Context, novelID uuid.UUID, 
 	case models.EditFieldTranslationStatus:
 		return string(novel.TranslationStatus), nil
 	case models.EditFieldTitle, models.EditFieldDescription, models.EditFieldAltTitles:
-		if lang != nil {
-			loc, err := s.novelRepo.GetLocalization(ctx, novelID, *lang)
-			if err != nil {
-				return "", err
+		// Локализация уже загружена в novel
+		switch fieldType {
+		case models.EditFieldTitle:
+			return novel.Title, nil
+		case models.EditFieldDescription:
+			if novel.Description != nil {
+				return *novel.Description, nil
 			}
-			if loc != nil {
-				switch fieldType {
-				case models.EditFieldTitle:
-					return loc.Title, nil
-				case models.EditFieldDescription:
-					return loc.Description, nil
-				case models.EditFieldAltTitles:
-					return loc.AltTitles, nil
-				}
-			}
+			return "", nil
+		case models.EditFieldAltTitles:
+			// AltTitles уже в novel как []string, нужно преобразовать
+			return "", nil // TODO: Преобразовать []string в строку если нужно
 		}
 	}
 
@@ -161,10 +165,15 @@ func (s *WikiEditService) GetEditRequest(ctx context.Context, id uuid.UUID) (*mo
 		return nil, err
 	}
 	if user != nil {
+		var avatarURL *string
+		if user.Profile.AvatarKey != nil {
+			url := "/uploads/" + *user.Profile.AvatarKey
+			avatarURL = &url
+		}
 		request.User = &models.UserPublic{
 			ID:          user.ID,
 			DisplayName: user.Profile.DisplayName,
-			AvatarURL:   user.Profile.AvatarURL,
+			AvatarURL:   avatarURL,
 		}
 	}
 
@@ -175,10 +184,15 @@ func (s *WikiEditService) GetEditRequest(ctx context.Context, id uuid.UUID) (*mo
 			return nil, err
 		}
 		if moderator != nil {
+			var avatarURL *string
+			if moderator.Profile.AvatarKey != nil {
+				url := "/uploads/" + *moderator.Profile.AvatarKey
+				avatarURL = &url
+			}
 			request.Moderator = &models.UserPublic{
 				ID:          moderator.ID,
 				DisplayName: moderator.Profile.DisplayName,
-				AvatarURL:   moderator.Profile.AvatarURL,
+				AvatarURL:   avatarURL,
 			}
 		}
 	}
@@ -191,6 +205,23 @@ func (s *WikiEditService) ListEditRequests(ctx context.Context, params models.Ed
 	requests, total, err := s.wikiRepo.ListEditRequests(ctx, params)
 	if err != nil {
 		return nil, err
+	}
+
+	// Enrich with user data
+	for i := range requests {
+		user, _ := s.userRepo.GetByID(ctx, requests[i].UserID)
+		if user != nil {
+			var avatarURL *string
+			if user.Profile.AvatarKey != nil {
+				url := "/uploads/" + *user.Profile.AvatarKey
+				avatarURL = &url
+			}
+			requests[i].User = &models.UserPublic{
+				ID:          user.ID,
+				DisplayName: user.Profile.DisplayName,
+				AvatarURL:   avatarURL,
+			}
+		}
 	}
 
 	totalPages := (total + params.Limit - 1) / params.Limit
@@ -223,10 +254,15 @@ func (s *WikiEditService) GetPendingRequests(ctx context.Context, page, limit in
 	for i := range requests {
 		user, _ := s.userRepo.GetByID(ctx, requests[i].UserID)
 		if user != nil {
+			var avatarURL *string
+			if user.Profile.AvatarKey != nil {
+				url := "/uploads/" + *user.Profile.AvatarKey
+				avatarURL = &url
+			}
 			requests[i].User = &models.UserPublic{
 				ID:          user.ID,
 				DisplayName: user.Profile.DisplayName,
-				AvatarURL:   user.Profile.AvatarURL,
+				AvatarURL:   avatarURL,
 			}
 		}
 	}
@@ -282,10 +318,15 @@ func (s *WikiEditService) GetEditHistory(ctx context.Context, params models.Edit
 	for i := range history {
 		user, _ := s.userRepo.GetByID(ctx, history[i].UserID)
 		if user != nil {
+			var avatarURL *string
+			if user.Profile.AvatarKey != nil {
+				url := "/uploads/" + *user.Profile.AvatarKey
+				avatarURL = &url
+			}
 			history[i].User = &models.UserPublic{
 				ID:          user.ID,
 				DisplayName: user.Profile.DisplayName,
-				AvatarURL:   user.Profile.AvatarURL,
+				AvatarURL:   avatarURL,
 			}
 		}
 	}

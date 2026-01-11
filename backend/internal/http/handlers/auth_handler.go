@@ -8,8 +8,11 @@ import (
 	"time"
 
 	"novels-backend/internal/domain/models"
+	"novels-backend/internal/http/middleware"
 	"novels-backend/internal/service"
 	"novels-backend/pkg/response"
+
+	"github.com/google/uuid"
 )
 
 // AuthHandler обработчик эндпоинтов аутентификации
@@ -58,7 +61,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 			response.Conflict(w, "email already exists")
 			return
 		}
-		response.InternalError(w, "failed to register user")
+		response.InternalError(w)
 		return
 	}
 
@@ -92,7 +95,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			response.Forbidden(w, "user is banned")
 			return
 		}
-		response.InternalError(w, "failed to login")
+		response.InternalError(w)
 		return
 	}
 
@@ -151,7 +154,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 			response.Forbidden(w, "user is banned")
 			return
 		}
-		response.InternalError(w, "failed to refresh token")
+		response.InternalError(w)
 		return
 	}
 
@@ -163,21 +166,36 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 // Me возвращает информацию о текущем пользователе
 // GET /api/v1/me
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	user := models.GetUserFromContext(r.Context())
-	if user == nil {
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
 		response.Unauthorized(w, "not authenticated")
 		return
 	}
 
-	response.OK(w, user)
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Unauthorized(w, "invalid user id")
+		return
+	}
+
+	// TODO: Получить полную информацию о пользователе из сервиса
+	response.OK(w, map[string]interface{}{
+		"id": userID,
+	})
 }
 
 // ChangePassword обрабатывает смену пароля
 // POST /api/v1/auth/change-password
 func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
-	user := models.GetUserFromContext(r.Context())
-	if user == nil {
+	userIDStr := middleware.GetUserID(r.Context())
+	if userIDStr == "" {
 		response.Unauthorized(w, "not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Unauthorized(w, "invalid user id")
 		return
 	}
 
@@ -199,13 +217,13 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.authService.ChangePassword(r.Context(), user.ID, req.OldPassword, req.NewPassword)
+	err = h.authService.ChangePassword(r.Context(), userID, req.OldPassword, req.NewPassword)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
 			response.BadRequest(w, "old password is incorrect")
 			return
 		}
-		response.InternalError(w, "failed to change password")
+		response.InternalError(w)
 		return
 	}
 

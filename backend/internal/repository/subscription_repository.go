@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/novels/backend/internal/domain/models"
+	"novels-backend/internal/domain/models"
 )
 
 type SubscriptionRepository struct {
@@ -448,12 +448,18 @@ func (r *SubscriptionRepository) GetSubscriptionStats(ctx context.Context) (map[
 	stats := make(map[string]int)
 	
 	// Active subscribers count
-	r.db.GetContext(ctx, &stats["active_subscribers"],
-		`SELECT COUNT(DISTINCT user_id) FROM subscriptions WHERE status = 'active' AND ends_at > NOW()`)
+	var activeSubscribers int
+	if err := r.db.GetContext(ctx, &activeSubscribers,
+		`SELECT COUNT(DISTINCT user_id) FROM subscriptions WHERE status = 'active' AND ends_at > NOW()`); err == nil {
+		stats["active_subscribers"] = activeSubscribers
+	}
 	
 	// Total subscriptions ever
-	r.db.GetContext(ctx, &stats["total_subscriptions"],
-		`SELECT COUNT(*) FROM subscriptions`)
+	var totalSubscriptions int
+	if err := r.db.GetContext(ctx, &totalSubscriptions,
+		`SELECT COUNT(*) FROM subscriptions`); err == nil {
+		stats["total_subscriptions"] = totalSubscriptions
+	}
 	
 	// Subscriptions by plan
 	rows, _ := r.db.QueryxContext(ctx,

@@ -66,6 +66,10 @@ type NovelWithLocalization struct {
 	Tags        []Tag    `json:"tags,omitempty"`
 }
 
+// NovelCard представляет облегчённую карточку новеллы для списков.
+// Используется как псевдоним NovelWithLocalization.
+type NovelCard = NovelWithLocalization
+
 // NovelDetail представляет детальную информацию о новелле
 type NovelDetail struct {
 	NovelWithLocalization
@@ -156,8 +160,17 @@ type UpdateNovelRequest struct {
 
 // NovelListResponse ответ со списком новелл
 type NovelListResponse struct {
-	Novels  []NovelWithLocalization `json:"novels"`
-	Filters *NovelFilters           `json:"filters,omitempty"`
+	Novels     []NovelWithLocalization `json:"novels"`
+	Filters    *NovelFilters           `json:"filters,omitempty"`
+	Pagination Pagination              `json:"pagination"`
+}
+
+// Pagination описывает простую пагинацию для списков новелл
+type Pagination struct {
+	Page       int `json:"page"`
+	Limit      int `json:"limit"`
+	Total      int `json:"total"`
+	TotalPages int `json:"totalPages"`
 }
 
 // NovelFilters фильтры для каталога

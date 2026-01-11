@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"novels/internal/domain/models"
-	"novels/internal/repository"
+	"novels-backend/internal/domain/models"
+	"novels-backend/internal/repository"
 
 	"github.com/google/uuid"
 	"github.com/gosimple/slug"
@@ -128,10 +128,15 @@ func (s *CollectionService) enrichCollection(ctx context.Context, collection *mo
 		return err
 	}
 	if user != nil {
+		var avatarURL *string
+		if user.Profile.AvatarKey != nil {
+			url := "/uploads/" + *user.Profile.AvatarKey
+			avatarURL = &url
+		}
 		collection.User = &models.UserPublic{
 			ID:          user.ID,
 			DisplayName: user.Profile.DisplayName,
-			AvatarURL:   user.Profile.AvatarURL,
+			AvatarURL:   avatarURL,
 		}
 	}
 
@@ -260,7 +265,7 @@ func (s *CollectionService) AddItem(ctx context.Context, collectionID, userID uu
 	}
 
 	// Check novel exists
-	novel, err := s.novelRepo.GetByID(ctx, req.NovelID)
+	novel, err := s.novelRepo.GetByID(ctx, req.NovelID, "ru")
 	if err != nil {
 		return err
 	}

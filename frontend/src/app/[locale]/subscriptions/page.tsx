@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, unstable_setRequestLocale } from 'next-intl/server';
 import SubscriptionsPageClient from './SubscriptionsPageClient';
 
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }): Promise<Metadata> {
@@ -11,6 +11,7 @@ export async function generateMetadata({ params: { locale } }: { params: { local
   };
 }
 
-export default async function SubscriptionsPage() {
+export default async function SubscriptionsPage({ params: { locale } }: { params: { locale: string } }) {
+  unstable_setRequestLocale(locale);
   return <SubscriptionsPageClient />;
 }
