@@ -22,7 +22,9 @@
     "chapters": "Chapters",
     "views": "Views",
     "rating": "Rating",
-    "new": "New"
+    "new": "New",
+    "loginRequired": "Login required",
+    "login": "Login"
   },
   "nav": {
     "home": "Home",
@@ -111,6 +113,8 @@
   },
   "catalog": {
     "title": "Catalog",
+    "searchPlaceholder": "Search novels...",
+    "filtersLabel": "Filters",
     "filters": {
       "genres": "Genres",
       "status": "Status",
@@ -128,6 +132,8 @@
     "resultsCount": "{count} novels found"
   },
   "bookmarks": {
+    "pageTitle": "My Bookmarks",
+    "pageDescription": "Your saved novels library",
     "title": "My Bookmarks",
     "lists": {
       "reading": "Reading",
@@ -211,5 +217,9 @@
     "dailyVotes": "Daily Votes",
     "novelRequests": "Novel Requests",
     "translationTickets": "Translation Tickets"
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "dashboard": "Dashboard"
   }
 }

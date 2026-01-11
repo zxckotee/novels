@@ -6,12 +6,21 @@ WORKDIR /app
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-# Copy go.mod (go.sum будет сгенерирован внутри контейнера)
-COPY go.mod ./
-
-# Разрешаем Go изменять go.sum внутри контейнера
+# Настройка Go proxy для ускорения загрузки зависимостей
+# Используем несколько proxy для надежности и скорости
+# goproxy.cn - китайское зеркало (быстрое для Азии)
+# proxy.golang.org - официальный proxy
+# direct - прямой доступ если proxy недоступны
+ENV GOPROXY=https://goproxy.cn,https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
+ENV GOTIMEOUT=300s
 ENV GOFLAGS=-mod=mod
 
+# Copy go.mod and go.sum (если есть)
+COPY go.mod go.sum* ./
+
+# Загружаем зависимости
+# Используем -x для отладки (можно убрать в продакшене)
 RUN go mod download
 
 # Copy source code
@@ -44,4 +53,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the application
+# For development with volumes, this will be overridden by docker-compose command
 CMD ["./server"]

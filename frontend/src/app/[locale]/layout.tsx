@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
 import { Inter, Manrope } from 'next/font/google';
 import { notFound } from 'next/navigation';
-import { NextIntlClientProvider, useMessages, unstable_setRequestLocale } from 'next-intl';
+import { NextIntlClientProvider, useMessages } from 'next-intl';
+import { unstable_setRequestLocale } from 'next-intl/server';
 import { locales, type Locale } from '@/i18n/config';
 import '@/styles/globals.css';
 import { Providers } from './providers';

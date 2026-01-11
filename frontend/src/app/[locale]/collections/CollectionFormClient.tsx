@@ -62,7 +62,7 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth/login`);
+      router.push(`/${locale}/login`);
     }
   }, [isAuthenticated, locale, router]);
 

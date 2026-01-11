@@ -1,0 +1,224 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "error": "エラーが発生しました",
+    "retry": "再試行",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "create": "作成",
+    "search": "検索",
+    "filter": "フィルター",
+    "sort": "並び替え",
+    "all": "すべて",
+    "more": "もっと",
+    "showMore": "もっと見る",
+    "seeAll": "すべて見る",
+    "back": "戻る",
+    "next": "次へ",
+    "prev": "前へ",
+    "chapter": "章",
+    "chapters": "章",
+    "views": "閲覧数",
+    "rating": "評価",
+    "new": "新規",
+    "loginRequired": "ログインが必要です",
+    "login": "ログイン"
+  },
+  "nav": {
+    "home": "ホーム",
+    "catalog": "カタログ",
+    "bookmarks": "ブックマーク",
+    "voting": "投票",
+    "profile": "プロフィール",
+    "admin": "管理",
+    "login": "ログイン",
+    "register": "登録",
+    "logout": "ログアウト"
+  },
+  "home": {
+    "hero": {
+      "title": "最高の小説を読む",
+      "subtitle": "7言語で数千の翻訳作品"
+    },
+    "sections": {
+      "latestUpdates": "最新更新",
+      "popular": "人気",
+      "trending": "トレンド",
+      "newReleases": "新着",
+      "topRated": "高評価",
+      "recommended": "おすすめ",
+      "collections": "コレクション"
+    },
+    "voting": {
+      "title": "小説に投票",
+      "description": "次に翻訳する本を選ぶ",
+      "button": "投票"
+    },
+    "propose": {
+      "title": "小説を提案",
+      "description": "翻訳キューに本を追加",
+      "button": "提案"
+    }
+  },
+  "novel": {
+    "status": {
+      "ongoing": "連載中",
+      "completed": "完結",
+      "paused": "休載中",
+      "dropped": "打ち切り"
+    },
+    "tabs": {
+      "description": "あらすじ",
+      "chapters": "章",
+      "comments": "コメント"
+    },
+    "info": {
+      "author": "著者",
+      "year": "年",
+      "originalChapters": "オリジナル章",
+      "translatedChapters": "翻訳済み章",
+      "genres": "ジャンル",
+      "tags": "タグ",
+      "altNames": "別名"
+    },
+    "actions": {
+      "read": "読む",
+      "continue": "続きを読む",
+      "addBookmark": "ブックマークに追加",
+      "removeBookmark": "ブックマークから削除",
+      "vote": "投票",
+      "rate": "評価",
+      "share": "共有"
+    }
+  },
+  "reader": {
+    "chapter": "第 {number} 章",
+    "navigation": {
+      "prev": "前の章",
+      "next": "次の章",
+      "toc": "目次"
+    },
+    "settings": {
+      "title": "読書設定",
+      "fontSize": "フォントサイズ",
+      "theme": "テーマ",
+      "lineHeight": "行間"
+    },
+    "progress": {
+      "reading": "読書中",
+      "saved": "進捗を保存しました"
+    }
+  },
+  "catalog": {
+    "title": "カタログ",
+    "searchPlaceholder": "小説を検索...",
+    "filtersLabel": "フィルター",
+    "filters": {
+      "genres": "ジャンル",
+      "status": "ステータス",
+      "sortBy": "並び替え",
+      "clear": "クリア"
+    },
+    "sort": {
+      "newest": "新着",
+      "updated": "最近更新",
+      "popular": "人気順",
+      "rating": "評価順",
+      "bookmarks": "ブックマーク順"
+    },
+    "noResults": "結果が見つかりません",
+    "resultsCount": "{count} 件の小説が見つかりました"
+  },
+  "bookmarks": {
+    "pageTitle": "マイブックマーク",
+    "pageDescription": "保存した小説ライブラリ",
+    "title": "マイブックマーク",
+    "lists": {
+      "reading": "読書中",
+      "planned": "読む予定",
+      "dropped": "中断",
+      "completed": "読了",
+      "favorites": "お気に入り"
+    },
+    "empty": "このリストにブックマークがありません",
+    "continueReading": "続きを読む",
+    "progress": "進捗: {current} / {total}"
+  },
+  "profile": {
+    "title": "プロフィール",
+    "stats": {
+      "chaptersRead": "読んだ章",
+      "readingTime": "読書時間",
+      "comments": "コメント",
+      "level": "レベル"
+    },
+    "tabs": {
+      "bookmarks": "ブックマーク",
+      "comments": "コメント",
+      "achievements": "実績",
+      "settings": "設定"
+    },
+    "subscription": {
+      "free": "無料",
+      "premium": "プレミアム",
+      "upgrade": "アップグレード"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "ログイン",
+      "email": "メール",
+      "password": "パスワード",
+      "forgotPassword": "パスワードを忘れた？",
+      "submit": "ログイン",
+      "noAccount": "アカウントをお持ちでないですか？",
+      "register": "登録"
+    },
+    "register": {
+      "title": "登録",
+      "displayName": "表示名",
+      "email": "メール",
+      "password": "パスワード",
+      "confirmPassword": "パスワード確認",
+      "submit": "アカウント作成",
+      "hasAccount": "すでにアカウントをお持ちですか？",
+      "login": "ログイン"
+    },
+    "errors": {
+      "invalidCredentials": "メールまたはパスワードが無効です",
+      "emailExists": "メールは既に使用されています",
+      "passwordMismatch": "パスワードが一致しません",
+      "weakPassword": "パスワードは8文字以上である必要があります"
+    }
+  },
+  "comments": {
+    "title": "コメント",
+    "write": "コメントを書く...",
+    "submit": "送信",
+    "reply": "返信",
+    "delete": "削除",
+    "edit": "編集",
+    "report": "報告",
+    "spoiler": "ネタバレ",
+    "empty": "まだコメントがありません",
+    "loadMore": "もっと読み込む"
+  },
+  "errors": {
+    "notFound": "ページが見つかりません",
+    "serverError": "サーバーエラー",
+    "unauthorized": "認証が必要です",
+    "forbidden": "アクセスが拒否されました",
+    "goHome": "ホームに戻る"
+  },
+  "wallet": {
+    "title": "ウォレット",
+    "dailyVotes": "デイリーボート",
+    "novelRequests": "小説リクエスト",
+    "translationTickets": "翻訳チケット"
+  },
+  "admin": {},
+  "voting": {},
+  "subscriptions": {}
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
@@ -26,7 +26,7 @@ const initialFormData: ChapterFormData = {
   publishNow: true,
 };
 
-export default function NewChapterPage() {
+function NewChapterPageContent() {
   const t = useTranslations('admin');
   const locale = useLocale();
   const router = useRouter();
@@ -295,5 +295,13 @@ export default function NewChapterPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function NewChapterPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <NewChapterPageContent />
+    </Suspense>
   );
 }

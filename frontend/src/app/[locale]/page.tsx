@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ArrowRight, Vote, PlusCircle, Star, TrendingUp, Clock, Sparkles } from 'lucide-react';
 import { NovelCard } from '@/components/novel/NovelCard';
@@ -8,6 +8,7 @@ import { HeroSlider } from '@/components/home/HeroSlider';
 
 export default function HomePage() {
   const t = useTranslations('home');
+  const locale = useLocale();
 
   return (
     <div className="min-h-screen">
@@ -21,7 +22,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Vote Block */}
           <Link
-            href="/voting"
+            href={`/${locale}/voting`}
             className="card-hover p-6 flex items-center gap-4 group bg-gradient-to-br from-accent-primary/10 to-transparent"
           >
             <div className="w-14 h-14 rounded-full bg-accent-primary/20 flex items-center justify-center flex-shrink-0">
@@ -40,7 +41,7 @@ export default function HomePage() {
 
           {/* Propose Block */}
           <Link
-            href="/propose"
+            href={`/${locale}/proposals/new`}
             className="card-hover p-6 flex items-center gap-4 group bg-gradient-to-br from-accent-secondary/10 to-transparent"
           >
             <div className="w-14 h-14 rounded-full bg-accent-secondary/20 flex items-center justify-center flex-shrink-0">
@@ -67,7 +68,7 @@ export default function HomePage() {
             <h2>{t('sections.latestUpdates')}</h2>
           </div>
           <Link
-            href="/catalog?sort=updated_at"
+            href={`/${locale}/catalog?sort=updated_at`}
             className="text-sm text-accent-primary hover:underline flex items-center gap-1"
           >
             {t('sections.latestUpdates')}
@@ -141,7 +142,7 @@ function LatestUpdatesGrid() {
     id: `novel-${i}`,
     slug: `novel-${i}`,
     title: `Название новеллы ${i + 1}`,
-    coverUrl: `/placeholder-cover.jpg`,
+    coverUrl: `/placeholder-cover.svg`,
     rating: 4.5,
     latestChapter: 150 + i,
     updatedAt: new Date().toISOString(),
@@ -164,7 +165,7 @@ function NovelCarousel() {
     id: `novel-${i}`,
     slug: `novel-${i}`,
     title: `Название новеллы ${i + 1}`,
-    coverUrl: `/placeholder-cover.jpg`,
+    coverUrl: `/placeholder-cover.svg`,
     rating: 4.5,
     latestChapter: 150 + i,
     updatedAt: new Date().toISOString(),

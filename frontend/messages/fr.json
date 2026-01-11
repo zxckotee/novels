@@ -1,0 +1,224 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Une erreur s'est produite",
+    "retry": "Réessayer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sort": "Trier",
+    "all": "Tout",
+    "more": "Plus",
+    "showMore": "Afficher plus",
+    "seeAll": "Voir tout",
+    "back": "Retour",
+    "next": "Suivant",
+    "prev": "Précédent",
+    "chapter": "Chapitre",
+    "chapters": "Chapitres",
+    "views": "Vues",
+    "rating": "Note",
+    "new": "Nouveau",
+    "loginRequired": "Connexion requise",
+    "login": "Se connecter"
+  },
+  "nav": {
+    "home": "Accueil",
+    "catalog": "Catalogue",
+    "bookmarks": "Signets",
+    "voting": "Vote",
+    "profile": "Profil",
+    "admin": "Admin",
+    "login": "Connexion",
+    "register": "S'inscrire",
+    "logout": "Déconnexion"
+  },
+  "home": {
+    "hero": {
+      "title": "Lisez les meilleurs romans",
+      "subtitle": "Des milliers d'œuvres traduites en 7 langues"
+    },
+    "sections": {
+      "latestUpdates": "Dernières mises à jour",
+      "popular": "Populaire",
+      "trending": "Tendances",
+      "newReleases": "Nouveautés",
+      "topRated": "Mieux notés",
+      "recommended": "Recommandé",
+      "collections": "Collections"
+    },
+    "voting": {
+      "title": "Voter pour un roman",
+      "description": "Choisissez le livre que nous traduirons ensuite",
+      "button": "Voter"
+    },
+    "propose": {
+      "title": "Proposer un roman",
+      "description": "Ajouter un livre à la file de traduction",
+      "button": "Proposer"
+    }
+  },
+  "novel": {
+    "status": {
+      "ongoing": "En cours",
+      "completed": "Terminé",
+      "paused": "En pause",
+      "dropped": "Abandonné"
+    },
+    "tabs": {
+      "description": "Description",
+      "chapters": "Chapitres",
+      "comments": "Commentaires"
+    },
+    "info": {
+      "author": "Auteur",
+      "year": "Année",
+      "originalChapters": "Chapitres originaux",
+      "translatedChapters": "Chapitres traduits",
+      "genres": "Genres",
+      "tags": "Tags",
+      "altNames": "Noms alternatifs"
+    },
+    "actions": {
+      "read": "Lire",
+      "continue": "Continuer",
+      "addBookmark": "Ajouter aux signets",
+      "removeBookmark": "Retirer des signets",
+      "vote": "Voter",
+      "rate": "Noter",
+      "share": "Partager"
+    }
+  },
+  "reader": {
+    "chapter": "Chapitre {number}",
+    "navigation": {
+      "prev": "Chapitre précédent",
+      "next": "Chapitre suivant",
+      "toc": "Table des matières"
+    },
+    "settings": {
+      "title": "Paramètres de lecture",
+      "fontSize": "Taille de police",
+      "theme": "Thème",
+      "lineHeight": "Hauteur de ligne"
+    },
+    "progress": {
+      "reading": "Lecture",
+      "saved": "Progression enregistrée"
+    }
+  },
+  "catalog": {
+    "title": "Catalogue",
+    "searchPlaceholder": "Rechercher des romans...",
+    "filtersLabel": "Filtres",
+    "filters": {
+      "genres": "Genres",
+      "status": "Statut",
+      "sortBy": "Trier par",
+      "clear": "Effacer"
+    },
+    "sort": {
+      "newest": "Plus récent",
+      "updated": "Récemment mis à jour",
+      "popular": "Le plus populaire",
+      "rating": "Mieux noté",
+      "bookmarks": "Le plus de signets"
+    },
+    "noResults": "Aucun résultat trouvé",
+    "resultsCount": "{count} romans trouvés"
+  },
+  "bookmarks": {
+    "pageTitle": "Mes signets",
+    "pageDescription": "Votre bibliothèque de romans sauvegardés",
+    "title": "Mes signets",
+    "lists": {
+      "reading": "En lecture",
+      "planned": "Prévu de lire",
+      "dropped": "Abandonné",
+      "completed": "Terminé",
+      "favorites": "Favoris"
+    },
+    "empty": "Aucun signet dans cette liste",
+    "continueReading": "Continuer",
+    "progress": "Progression: {current} / {total}"
+  },
+  "profile": {
+    "title": "Profil",
+    "stats": {
+      "chaptersRead": "Chapitres lus",
+      "readingTime": "Temps de lecture",
+      "comments": "Commentaires",
+      "level": "Niveau"
+    },
+    "tabs": {
+      "bookmarks": "Signets",
+      "comments": "Commentaires",
+      "achievements": "Réalisations",
+      "settings": "Paramètres"
+    },
+    "subscription": {
+      "free": "Gratuit",
+      "premium": "Premium",
+      "upgrade": "Améliorer"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "forgotPassword": "Mot de passe oublié ?",
+      "submit": "Se connecter",
+      "noAccount": "Vous n'avez pas de compte ?",
+      "register": "S'inscrire"
+    },
+    "register": {
+      "title": "S'inscrire",
+      "displayName": "Nom d'affichage",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "submit": "Créer un compte",
+      "hasAccount": "Vous avez déjà un compte ?",
+      "login": "Se connecter"
+    },
+    "errors": {
+      "invalidCredentials": "E-mail ou mot de passe invalide",
+      "emailExists": "L'e-mail est déjà utilisé",
+      "passwordMismatch": "Les mots de passe ne correspondent pas",
+      "weakPassword": "Le mot de passe doit contenir au moins 8 caractères"
+    }
+  },
+  "comments": {
+    "title": "Commentaires",
+    "write": "Écrire un commentaire...",
+    "submit": "Soumettre",
+    "reply": "Répondre",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "report": "Signaler",
+    "spoiler": "Spoiler",
+    "empty": "Pas encore de commentaires",
+    "loadMore": "Charger plus"
+  },
+  "errors": {
+    "notFound": "Page non trouvée",
+    "serverError": "Erreur serveur",
+    "unauthorized": "Autorisation requise",
+    "forbidden": "Accès refusé",
+    "goHome": "Retour à l'accueil"
+  },
+  "wallet": {
+    "title": "Portefeuille",
+    "dailyVotes": "Votes quotidiens",
+    "novelRequests": "Demandes de romans",
+    "translationTickets": "Billets de traduction"
+  },
+  "admin": {},
+  "voting": {},
+  "subscriptions": {}
+}

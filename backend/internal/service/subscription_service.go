@@ -58,16 +58,26 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, userID uuid.UUID, r
 		return nil, ErrAlreadySubscribed
 	}
 	
-	// Get plan
+	// Get plan - try UUID first, then code
+	var plan *models.SubscriptionPlan
 	planID, err := uuid.Parse(req.PlanID)
-	if err != nil {
-		return nil, errors.New("invalid plan ID")
+	if err == nil {
+		// Valid UUID - get by ID
+		plan, err = s.subRepo.GetPlanByID(ctx, planID)
+		if err != nil {
+			return nil, fmt.Errorf("get plan: %w", err)
+		}
+	} else {
+		// Not a UUID - try as plan code
+		plan, err = s.subRepo.GetPlanByCode(ctx, models.SubscriptionPlanCode(req.PlanID))
+		if err != nil {
+			return nil, fmt.Errorf("get plan by code: %w", err)
+		}
+		if plan != nil {
+			planID = plan.ID
+		}
 	}
 	
-	plan, err := s.subRepo.GetPlanByID(ctx, planID)
-	if err != nil {
-		return nil, fmt.Errorf("get plan: %w", err)
-	}
 	if plan == nil || !plan.IsActive {
 		return nil, ErrPlanNotFound
 	}

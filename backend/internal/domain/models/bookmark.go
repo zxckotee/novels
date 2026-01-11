@@ -30,12 +30,12 @@ type BookmarkList struct {
 	ID        uuid.UUID        `json:"id" db:"id"`
 	UserID    uuid.UUID        `json:"userId" db:"user_id"`
 	Code      BookmarkListCode `json:"code" db:"code"`
-	Title     string           `json:"title" db:"title"`
+	Title     string           `json:"title" db:"-"` // Computed field from localization
 	SortOrder int              `json:"sortOrder" db:"sort_order"`
-	IsSystem  bool             `json:"isSystem" db:"is_system"`
-	Count     int              `json:"count" db:"count"` // Computed field
+	IsSystem  bool             `json:"isSystem" db:"-"` // Computed field - system lists have predefined codes
+	Count     int              `json:"count" db:"-"` // Computed field
 	CreatedAt time.Time        `json:"createdAt" db:"created_at"`
-	UpdatedAt time.Time        `json:"updatedAt" db:"updated_at"`
+	UpdatedAt time.Time        `json:"updatedAt" db:"-"` // Not stored in DB
 }
 
 // Bookmark represents a novel in a bookmark list

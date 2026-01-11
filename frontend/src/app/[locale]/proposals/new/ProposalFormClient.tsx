@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
+import { isPremium } from '@/store/auth';
 
 const GENRES = [
   'fantasy', 'romance', 'action', 'adventure', 'drama', 'comedy',
@@ -49,6 +50,7 @@ interface ProposalResponse {
 
 export default function ProposalFormClient() {
   const t = useTranslations('proposals');
+  const locale = useLocale();
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   
@@ -75,7 +77,9 @@ export default function ProposalFormClient() {
     enabled: isAuthenticated,
   });
 
-  const hasTicket = (wallet?.novelRequests ?? 0) > 0;
+  // Premium users always have access, or if they have tickets
+  const hasPremiumAccess = isPremium(user);
+  const hasTicket = (wallet?.novelRequests ?? 0) > 0 || hasPremiumAccess;
 
   // Submit proposal
   const submitMutation = useMutation<ProposalResponse, unknown, ProposalFormData>({
@@ -158,7 +162,7 @@ export default function ProposalFormClient() {
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-text-primary mb-4">{t('newProposal.loginRequired')}</h1>
         <p className="text-text-secondary mb-8">{t('newProposal.loginMessage')}</p>
-        <Link href="/auth/login" className="px-6 py-3 bg-primary text-white rounded-lg">
+        <Link href={`/${locale}/login`} className="px-6 py-3 bg-primary text-white rounded-lg">
           {t('newProposal.login')}
         </Link>
       </div>
@@ -177,10 +181,10 @@ export default function ProposalFormClient() {
           <h1 className="text-2xl font-bold text-text-primary mb-4">{t('newProposal.noTicket')}</h1>
           <p className="text-text-secondary mb-8">{t('newProposal.noTicketMessage')}</p>
           <div className="flex gap-4 justify-center">
-            <Link href="/subscriptions" className="px-6 py-3 bg-primary text-white rounded-lg">
+            <Link href={`/${locale}/subscriptions`} className="px-6 py-3 bg-primary text-white rounded-lg">
               {t('newProposal.getPremium')}
             </Link>
-            <Link href="/voting" className="px-6 py-3 bg-surface-elevated text-text-primary rounded-lg">
+            <Link href={`/${locale}/voting`} className="px-6 py-3 bg-surface-elevated text-text-primary rounded-lg">
               {t('newProposal.backToVoting')}
             </Link>
           </div>

@@ -1,8 +1,9 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
+import { useAuthStore } from '@/store/auth';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -21,6 +22,30 @@ export function Providers({ children }: ProvidersProps) {
         },
       })
   );
+
+  // Zustand persist: hydrate auth store only after mount to avoid
+  // server/client HTML mismatches (hydration errors).
+  useEffect(() => {
+    // Rehydrate persisted auth state (localStorage) on client.
+    useAuthStore.persist.rehydrate();
+
+    // Mark auth store as loaded after hydration.
+    const unsub =
+      typeof useAuthStore.persist.onFinishHydration === 'function'
+        ? useAuthStore.persist.onFinishHydration(() => {
+            useAuthStore.getState().setLoading(false);
+          })
+        : undefined;
+
+    // If already hydrated, ensure loading is false.
+    if (typeof useAuthStore.persist.hasHydrated === 'function' && useAuthStore.persist.hasHydrated()) {
+      useAuthStore.getState().setLoading(false);
+    }
+
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

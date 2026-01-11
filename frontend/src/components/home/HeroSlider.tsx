@@ -27,7 +27,7 @@ export function HeroSlider() {
       slug: 'the-beginning-after-the-end',
       title: 'Начало после конца',
       description: 'Король Грей обладает непревзойденной силой и престижем. Однако одиночество следует за теми, кто обладает большой властью...',
-      coverUrl: '/placeholder-hero-1.jpg',
+      coverUrl: '/placeholder-hero-1.svg',
       latestChapter: 450,
     },
     {
@@ -35,7 +35,7 @@ export function HeroSlider() {
       slug: 'solo-leveling',
       title: 'Поднятие уровня в одиночку',
       description: 'В мире, где пробудились охотники, обладающие магическими способностями, Сон Джин-ву — слабейший среди них...',
-      coverUrl: '/placeholder-hero-2.jpg',
+      coverUrl: '/placeholder-hero-2.svg',
       latestChapter: 270,
     },
     {
@@ -43,7 +43,7 @@ export function HeroSlider() {
       slug: 'omniscient-readers-viewpoint',
       title: 'Точка зрения всеведущего читателя',
       description: 'Единственный читатель, закончивший роман "Три способа выжить в разрушенном мире", Ким Доккджа...',
-      coverUrl: '/placeholder-hero-3.jpg',
+      coverUrl: '/placeholder-hero-3.svg',
       latestChapter: 551,
     },
   ];

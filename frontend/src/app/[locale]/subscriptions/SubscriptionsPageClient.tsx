@@ -27,15 +27,27 @@ interface SubscriptionPlan {
   isActive: boolean;
 }
 
-interface Subscription {
-  id: string;
-  userId: string;
-  planId: string;
-  plan: SubscriptionPlan;
-  status: string;
-  startsAt: string;
-  endsAt: string;
-  autoRenew: boolean;
+interface UserSubscriptionInfo {
+  hasActiveSubscription: boolean;
+  subscription?: {
+    id: string;
+    userId: string;
+    planId: string;
+    status: string;
+    startsAt: string;
+    endsAt: string;
+    autoRenew: boolean;
+  };
+  plan?: SubscriptionPlan;
+  features?: {
+    noAds: boolean;
+    dailyVoteMultiplier: number;
+    monthlyNovelRequests: number;
+    monthlyTranslationTickets: number;
+    canEditDescriptions: boolean;
+    canRequestRetranslate: boolean;
+  };
+  daysRemaining?: number;
 }
 
 export default function SubscriptionsPageClient() {
@@ -55,10 +67,10 @@ export default function SubscriptionsPageClient() {
   });
 
   // Fetch current subscription
-  const { data: subscription, isLoading: subLoading } = useQuery<Subscription>({
+  const { data: subInfo, isLoading: subLoading } = useQuery<UserSubscriptionInfo>({
     queryKey: ['my-subscription'],
     queryFn: async () => {
-      const response = await api.get<Subscription>('/subscriptions/current');
+      const response = await api.get<UserSubscriptionInfo>('/subscriptions/me');
       return response.data;
     },
     enabled: isAuthenticated,
@@ -118,6 +130,9 @@ export default function SubscriptionsPageClient() {
     });
   };
 
+  // Determine current plan code
+  const currentPlanCode = subInfo?.hasActiveSubscription && subInfo.plan?.code ? subInfo.plan.code : 'free';
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
@@ -127,30 +142,15 @@ export default function SubscriptionsPageClient() {
       </div>
 
       {/* Current Subscription Banner */}
-      {subscription && subscription.status === 'active' && (
+      {subInfo?.hasActiveSubscription && subInfo.subscription && subInfo.plan && (
         <div className="bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-xl p-6 mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <p className="text-sm text-text-secondary">{t('currentPlan')}</p>
-              <h3 className="text-2xl font-bold text-text-primary">{subscription.plan.title}</h3>
+              <h3 className="text-2xl font-bold text-text-primary">{subInfo.plan.title}</h3>
               <p className="text-text-secondary">
-                {t('validUntil', { date: formatDate(subscription.endsAt) })}
+                {t('validUntil', { date: formatDate(subInfo.subscription.endsAt) })}
               </p>
-            </div>
-            <div className="flex gap-3">
-              <Link
-                href="/profile/subscription"
-                className="px-4 py-2 bg-surface-elevated text-text-primary rounded-lg hover:bg-surface-muted transition-colors"
-              >
-                {t('manage')}
-              </Link>
-              <button
-                onClick={() => cancelMutation.mutate()}
-                disabled={cancelMutation.isPending}
-                className="px-4 py-2 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500/30 transition-colors"
-              >
-                {cancelMutation.isPending ? '...' : t('cancel')}
-              </button>
             </div>
           </div>
         </div>
@@ -230,7 +230,7 @@ export default function SubscriptionsPageClient() {
             disabled
             className="w-full py-3 bg-surface text-text-muted rounded-lg cursor-not-allowed"
           >
-            {t('currentPlanButton')}
+            {currentPlanCode === 'free' ? t('currentPlanButton') : t('plans.free.title')}
           </button>
         </div>
 
@@ -285,10 +285,16 @@ export default function SubscriptionsPageClient() {
           </ul>
           <button
             onClick={() => handleSubscribe('premium')}
-            disabled={subscribeMutation.isPending}
-            className="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50"
+            disabled={subscribeMutation.isPending || currentPlanCode === 'premium'}
+            className={`w-full py-3 rounded-lg transition-colors ${
+              currentPlanCode === 'premium'
+                ? 'bg-surface text-text-muted cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-primary-hover disabled:opacity-50'
+            }`}
           >
-            {subscribeMutation.isPending ? '...' : t('subscribe')}
+            {currentPlanCode === 'premium'
+              ? t('currentPlanButton')
+              : subscribeMutation.isPending ? '...' : t('subscribe')}
           </button>
         </div>
 
@@ -347,10 +353,16 @@ export default function SubscriptionsPageClient() {
           </ul>
           <button
             onClick={() => handleSubscribe('vip')}
-            disabled={subscribeMutation.isPending}
-            className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:opacity-90 transition-colors disabled:opacity-50"
+            disabled={subscribeMutation.isPending || currentPlanCode === 'vip'}
+            className={`w-full py-3 rounded-lg transition-colors ${
+              currentPlanCode === 'vip'
+                ? 'bg-surface text-text-muted cursor-not-allowed'
+                : 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:opacity-90 disabled:opacity-50'
+            }`}
           >
-            {subscribeMutation.isPending ? '...' : t('subscribe')}
+            {currentPlanCode === 'vip'
+              ? t('currentPlanButton')
+              : subscribeMutation.isPending ? '...' : t('subscribe')}
           </button>
         </div>
       </div>

@@ -22,7 +22,9 @@
     "chapters": "Главы",
     "views": "Просмотры",
     "rating": "Рейтинг",
-    "new": "Новое"
+    "new": "Новое",
+    "loginRequired": "Требуется авторизация",
+    "login": "Войти"
   },
   "nav": {
     "home": "Главная",
@@ -111,6 +113,8 @@
   },
   "catalog": {
     "title": "Каталог",
+    "searchPlaceholder": "Поиск по каталогу...",
+    "filtersLabel": "Фильтры",
     "filters": {
       "genres": "Жанры",
       "status": "Статус",
@@ -286,5 +290,9 @@
     "novelRequests": "Билеты тайтлов",
     "translationTickets": "Билеты перевода",
     "balance": "Баланс"
+  },
+  "admin": {
+    "title": "Панель администратора",
+    "dashboard": "Панель управления"
   }
 }

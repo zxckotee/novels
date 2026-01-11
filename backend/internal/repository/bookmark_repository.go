@@ -23,7 +23,7 @@ func (r *BookmarkRepository) GetOrCreateLists(ctx context.Context, userID uuid.U
 	// First, try to get existing lists
 	var lists []models.BookmarkList
 	query := `
-		SELECT id, user_id, code, title, sort_order, is_system, created_at, updated_at
+		SELECT id, user_id, code, sort_order, created_at
 		FROM bookmark_lists
 		WHERE user_id = $1
 		ORDER BY sort_order`
@@ -50,15 +50,14 @@ func (r *BookmarkRepository) GetOrCreateLists(ctx context.Context, userID uuid.U
 			ID:        uuid.New(),
 			UserID:    userID,
 			Code:      code,
-			Title:     models.GetListTitle(code, "ru"),
 			SortOrder: i,
-			IsSystem:  true,
 		}
 		
 		_, err = tx.ExecContext(ctx, `
-			INSERT INTO bookmark_lists (id, user_id, code, title, sort_order, is_system, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
-			list.ID, list.UserID, list.Code, list.Title, list.SortOrder, list.IsSystem)
+			INSERT INTO bookmark_lists (id, user_id, code, sort_order, created_at)
+			VALUES ($1, $2, $3, $4, NOW())
+			ON CONFLICT (user_id, code) DO NOTHING`,
+			list.ID, list.UserID, list.Code, list.SortOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +72,7 @@ func (r *BookmarkRepository) GetOrCreateLists(ctx context.Context, userID uuid.U
 	return lists, nil
 }
 
-// getListsWithCounts adds bookmark counts to lists
+// getListsWithCounts adds bookmark counts to lists and sets titles from localization
 func (r *BookmarkRepository) getListsWithCounts(ctx context.Context, userID uuid.UUID, lists []models.BookmarkList) ([]models.BookmarkList, error) {
 	query := `
 		SELECT list_id, COUNT(*) as count
@@ -99,16 +98,30 @@ func (r *BookmarkRepository) getListsWithCounts(ctx context.Context, userID uuid
 	
 	for i := range lists {
 		lists[i].Count = counts[lists[i].ID]
+		// Set localized title from code
+		lists[i].Title = models.GetListTitle(lists[i].Code, "ru")
+		// Check if this is a system list
+		lists[i].IsSystem = isSystemList(lists[i].Code)
 	}
 	
 	return lists, nil
+}
+
+// isSystemList checks if a code matches a system bookmark list
+func isSystemList(code models.BookmarkListCode) bool {
+	for _, systemCode := range models.SystemBookmarkLists {
+		if code == systemCode {
+			return true
+		}
+	}
+	return false
 }
 
 // GetListByCode gets a bookmark list by code
 func (r *BookmarkRepository) GetListByCode(ctx context.Context, userID uuid.UUID, code models.BookmarkListCode) (*models.BookmarkList, error) {
 	var list models.BookmarkList
 	query := `
-		SELECT id, user_id, code, title, sort_order, is_system, created_at, updated_at
+		SELECT id, user_id, code, sort_order, created_at
 		FROM bookmark_lists
 		WHERE user_id = $1 AND code = $2`
 	
@@ -119,6 +132,10 @@ func (r *BookmarkRepository) GetListByCode(ctx context.Context, userID uuid.UUID
 		}
 		return nil, err
 	}
+	
+	// Set localized title and system flag
+	list.Title = models.GetListTitle(list.Code, "ru")
+	list.IsSystem = isSystemList(list.Code)
 	
 	return &list, nil
 }
@@ -249,12 +266,12 @@ func (r *BookmarkRepository) List(ctx context.Context, filter models.BookmarksFi
 	// Apply pagination
 	offset := (filter.Page - 1) * filter.Limit
 	selectQuery := fmt.Sprintf(`
-		SELECT 
+		SELECT
 			b.id, b.user_id, b.novel_id, b.list_id, b.created_at, b.updated_at,
 			n.id as novel_id, n.slug, n.cover_image_key, n.translation_status,
 			nl.title as novel_title,
 			(SELECT COUNT(*) FROM chapters WHERE novel_id = n.id AND published_at IS NOT NULL) as chapters_count,
-			COALESCE(n.rating, 0) as rating,
+			0.0 as rating,
 			rp.chapter_id as progress_chapter_id,
 			c.number as progress_chapter_num,
 			lc.max_chapter as total_chapters,

@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Search,
   Bookmark,
@@ -14,6 +14,8 @@ import {
   Wallet,
   LogIn,
   Globe,
+  Settings,
+  LogOut,
 } from 'lucide-react';
 import { locales, localeNames, localeFlags, type Locale } from '@/i18n/config';
 import { useAuthStore } from '@/store/auth';
@@ -22,10 +24,47 @@ export function Header() {
   const t = useTranslations('nav');
   const locale = useLocale() as Locale;
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
-  const { user, isAuthenticated } = useAuthStore();
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const { user, isAuthenticated, logout } = useAuthStore();
+
+  // Handle mount to prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+
+    if (notificationsOpen || profileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [notificationsOpen, profileMenuOpen]);
+
+  const handleLogout = () => {
+    logout();
+    setProfileMenuOpen(false);
+    router.push(`/${locale}/login`);
+  };
 
   // Navigation links
   const navLinks = [
@@ -112,7 +151,9 @@ export function Header() {
               )}
             </div>
 
-            {isAuthenticated ? (
+            {/* Auth-dependent links - render both and hide one to prevent hydration mismatch */}
+            {/* Authenticated Links */}
+            {mounted && isAuthenticated && (
               <>
                 {/* Wallet */}
                 <Link href={`/${locale}/wallet`} className="btn-ghost p-2">
@@ -125,34 +166,127 @@ export function Header() {
                 </Link>
 
                 {/* Notifications */}
-                <button className="btn-ghost p-2 relative">
-                  <Bell className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent-danger rounded-full text-[10px] flex items-center justify-center">
-                    3
-                  </span>
-                </button>
+                <div className="relative" ref={notificationsRef}>
+                  <button
+                    onClick={() => setNotificationsOpen(!notificationsOpen)}
+                    className="btn-ghost p-2 relative"
+                  >
+                    <Bell className="w-5 h-5" />
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent-danger rounded-full text-[10px] flex items-center justify-center">
+                      3
+                    </span>
+                  </button>
+                  {notificationsOpen && (
+                    <div className="dropdown right-0 w-80">
+                      <div className="p-4 border-b border-border-primary flex items-center justify-between">
+                        <h3 className="font-semibold">Уведомления</h3>
+                        <button
+                          onClick={() => setNotificationsOpen(false)}
+                          className="p-1 hover:bg-background-hover rounded transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="max-h-96 overflow-y-auto">
+                        {/* Placeholder notifications */}
+                        <div className="p-4 hover:bg-background-hover transition-colors border-b border-border-primary cursor-pointer">
+                          <div className="flex gap-3">
+                            <div className="w-2 h-2 bg-accent-primary rounded-full mt-2 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">Новая глава доступна</p>
+                              <p className="text-xs text-foreground-secondary mt-1">
+                                Вышла новая глава в "Название новеллы"
+                              </p>
+                              <p className="text-xs text-foreground-muted mt-1">2 часа назад</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-4 hover:bg-background-hover transition-colors border-b border-border-primary cursor-pointer">
+                          <div className="flex gap-3">
+                            <div className="w-2 h-2 bg-accent-primary rounded-full mt-2 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">Ваша подписка активна</p>
+                              <p className="text-xs text-foreground-secondary mt-1">
+                                Подписка Premium успешно активирована
+                              </p>
+                              <p className="text-xs text-foreground-muted mt-1">5 часов назад</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-4 hover:bg-background-hover transition-colors cursor-pointer">
+                          <div className="flex gap-3">
+                            <div className="w-2 h-2 bg-accent-primary rounded-full mt-2 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">Новый комментарий</p>
+                              <p className="text-xs text-foreground-secondary mt-1">
+                                Кто-то ответил на ваш комментарий
+                              </p>
+                              <p className="text-xs text-foreground-muted mt-1">1 день назад</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Profile */}
-                <Link
-                  href={`/${locale}/profile`}
-                  className="flex items-center gap-2 ml-2"
-                >
-                  <div className="w-8 h-8 rounded-full bg-accent-primary/20 flex items-center justify-center">
-                    <User className="w-4 h-4 text-accent-primary" />
-                  </div>
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link href={`/${locale}/login`} className="btn-ghost">
-                  <LogIn className="w-4 h-4 mr-2" />
-                  {t('login')}
-                </Link>
-                <Link href={`/${locale}/register`} className="btn-primary hidden sm:flex">
-                  {t('register')}
-                </Link>
+                <div className="relative ml-2" ref={profileRef}>
+                  <button
+                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                    className="flex items-center gap-2"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-accent-primary/20 flex items-center justify-center hover:bg-accent-primary/30 transition-colors">
+                      <User className="w-4 h-4 text-accent-primary" />
+                    </div>
+                  </button>
+                  {profileMenuOpen && (
+                    <div className="dropdown right-0 w-48">
+                      <div className="p-2 border-b border-border-primary">
+                        <p className="text-sm font-medium truncate">{user?.displayName}</p>
+                        <p className="text-xs text-foreground-muted truncate">{user?.email}</p>
+                      </div>
+                      <div className="p-2">
+                        <Link
+                          href={`/${locale}/profile`}
+                          onClick={() => setProfileMenuOpen(false)}
+                          className="dropdown-item w-full text-left flex items-center gap-2"
+                        >
+                          <User className="w-4 h-4" />
+                          Профиль
+                        </Link>
+                        <Link
+                          href={`/${locale}/profile/settings`}
+                          onClick={() => setProfileMenuOpen(false)}
+                          className="dropdown-item w-full text-left flex items-center gap-2"
+                        >
+                          <Settings className="w-4 h-4" />
+                          Настройки
+                        </Link>
+                        <button
+                          onClick={handleLogout}
+                          className="dropdown-item w-full text-left flex items-center gap-2 text-red-500 hover:bg-red-500/10"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Выйти
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             )}
+
+            {/* Unauthenticated Links - always render on server, hide on client if authenticated */}
+            <div suppressHydrationWarning style={{ display: mounted && isAuthenticated ? 'none' : 'contents' }}>
+              <Link href={`/${locale}/login`} className="btn-ghost">
+                <LogIn className="w-4 h-4 mr-2" />
+                {t('login')}
+              </Link>
+              <Link href={`/${locale}/register`} className="btn-primary hidden sm:flex">
+                {t('register')}
+              </Link>
+            </div>
 
             {/* Mobile Menu Toggle */}
             <button

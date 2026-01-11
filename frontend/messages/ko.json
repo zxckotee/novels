@@ -1,0 +1,224 @@
+{
+  "common": {
+    "loading": "로딩 중...",
+    "error": "오류가 발생했습니다",
+    "retry": "다시 시도",
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "create": "생성",
+    "search": "검색",
+    "filter": "필터",
+    "sort": "정렬",
+    "all": "전체",
+    "more": "더보기",
+    "showMore": "더 보기",
+    "seeAll": "전체 보기",
+    "back": "뒤로",
+    "next": "다음",
+    "prev": "이전",
+    "chapter": "챕터",
+    "chapters": "챕터",
+    "views": "조회수",
+    "rating": "평점",
+    "new": "신규",
+    "loginRequired": "로그인이 필요합니다",
+    "login": "로그인"
+  },
+  "nav": {
+    "home": "홈",
+    "catalog": "카탈로그",
+    "bookmarks": "북마크",
+    "voting": "투표",
+    "profile": "프로필",
+    "admin": "관리",
+    "login": "로그인",
+    "register": "회원가입",
+    "logout": "로그아웃"
+  },
+  "home": {
+    "hero": {
+      "title": "최고의 소설 읽기",
+      "subtitle": "7개 언어로 수천 개의 번역 작품"
+    },
+    "sections": {
+      "latestUpdates": "최신 업데이트",
+      "popular": "인기",
+      "trending": "트렌드",
+      "newReleases": "신규 출시",
+      "topRated": "최고 평점",
+      "recommended": "추천",
+      "collections": "컬렉션"
+    },
+    "voting": {
+      "title": "소설에 투표",
+      "description": "다음에 번역할 책을 선택하세요",
+      "button": "투표"
+    },
+    "propose": {
+      "title": "소설 제안",
+      "description": "번역 대기열에 책 추가",
+      "button": "제안"
+    }
+  },
+  "novel": {
+    "status": {
+      "ongoing": "연재 중",
+      "completed": "완결",
+      "paused": "휴재",
+      "dropped": "중단"
+    },
+    "tabs": {
+      "description": "설명",
+      "chapters": "챕터",
+      "comments": "댓글"
+    },
+    "info": {
+      "author": "작가",
+      "year": "연도",
+      "originalChapters": "원본 챕터",
+      "translatedChapters": "번역된 챕터",
+      "genres": "장르",
+      "tags": "태그",
+      "altNames": "대체 제목"
+    },
+    "actions": {
+      "read": "읽기",
+      "continue": "계속 읽기",
+      "addBookmark": "북마크에 추가",
+      "removeBookmark": "북마크에서 제거",
+      "vote": "투표",
+      "rate": "평점",
+      "share": "공유"
+    }
+  },
+  "reader": {
+    "chapter": "제 {number} 장",
+    "navigation": {
+      "prev": "이전 장",
+      "next": "다음 장",
+      "toc": "목차"
+    },
+    "settings": {
+      "title": "읽기 설정",
+      "fontSize": "글꼴 크기",
+      "theme": "테마",
+      "lineHeight": "줄 간격"
+    },
+    "progress": {
+      "reading": "읽는 중",
+      "saved": "진행 상황 저장됨"
+    }
+  },
+  "catalog": {
+    "title": "카탈로그",
+    "searchPlaceholder": "소설 검색...",
+    "filtersLabel": "필터",
+    "filters": {
+      "genres": "장르",
+      "status": "상태",
+      "sortBy": "정렬",
+      "clear": "지우기"
+    },
+    "sort": {
+      "newest": "최신",
+      "updated": "최근 업데이트",
+      "popular": "인기순",
+      "rating": "평점순",
+      "bookmarks": "북마크순"
+    },
+    "noResults": "결과를 찾을 수 없습니다",
+    "resultsCount": "{count} 개의 소설을 찾았습니다"
+  },
+  "bookmarks": {
+    "pageTitle": "내 북마크",
+    "pageDescription": "저장한 소설 라이브러리",
+    "title": "내 북마크",
+    "lists": {
+      "reading": "읽는 중",
+      "planned": "읽을 예정",
+      "dropped": "중단",
+      "completed": "완독",
+      "favorites": "즐겨찾기"
+    },
+    "empty": "이 목록에 북마크가 없습니다",
+    "continueReading": "계속 읽기",
+    "progress": "진행 상황: {current} / {total}"
+  },
+  "profile": {
+    "title": "프로필",
+    "stats": {
+      "chaptersRead": "읽은 챕터",
+      "readingTime": "읽기 시간",
+      "comments": "댓글",
+      "level": "레벨"
+    },
+    "tabs": {
+      "bookmarks": "북마크",
+      "comments": "댓글",
+      "achievements": "업적",
+      "settings": "설정"
+    },
+    "subscription": {
+      "free": "무료",
+      "premium": "프리미엄",
+      "upgrade": "업그레이드"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "로그인",
+      "email": "이메일",
+      "password": "비밀번호",
+      "forgotPassword": "비밀번호를 잊으셨나요?",
+      "submit": "로그인",
+      "noAccount": "계정이 없으신가요?",
+      "register": "회원가입"
+    },
+    "register": {
+      "title": "회원가입",
+      "displayName": "표시 이름",
+      "email": "이메일",
+      "password": "비밀번호",
+      "confirmPassword": "비밀번호 확인",
+      "submit": "계정 만들기",
+      "hasAccount": "이미 계정이 있으신가요?",
+      "login": "로그인"
+    },
+    "errors": {
+      "invalidCredentials": "이메일 또는 비밀번호가 잘못되었습니다",
+      "emailExists": "이메일이 이미 사용 중입니다",
+      "passwordMismatch": "비밀번호가 일치하지 않습니다",
+      "weakPassword": "비밀번호는 최소 8자 이상이어야 합니다"
+    }
+  },
+  "comments": {
+    "title": "댓글",
+    "write": "댓글 작성...",
+    "submit": "제출",
+    "reply": "답글",
+    "delete": "삭제",
+    "edit": "편집",
+    "report": "신고",
+    "spoiler": "스포일러",
+    "empty": "아직 댓글이 없습니다",
+    "loadMore": "더 보기"
+  },
+  "errors": {
+    "notFound": "페이지를 찾을 수 없습니다",
+    "serverError": "서버 오류",
+    "unauthorized": "인증이 필요합니다",
+    "forbidden": "액세스가 거부되었습니다",
+    "goHome": "홈으로 이동"
+  },
+  "wallet": {
+    "title": "지갑",
+    "dailyVotes": "일일 투표",
+    "novelRequests": "소설 요청",
+    "translationTickets": "번역 티켓"
+  },
+  "admin": {},
+  "voting": {},
+  "subscriptions": {}
+}

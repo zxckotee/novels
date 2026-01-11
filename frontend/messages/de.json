@@ -1,0 +1,224 @@
+{
+  "common": {
+    "loading": "Lädt...",
+    "error": "Ein Fehler ist aufgetreten",
+    "retry": "Wiederholen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "search": "Suchen",
+    "filter": "Filter",
+    "sort": "Sortieren",
+    "all": "Alle",
+    "more": "Mehr",
+    "showMore": "Mehr anzeigen",
+    "seeAll": "Alle anzeigen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "prev": "Zurück",
+    "chapter": "Kapitel",
+    "chapters": "Kapitel",
+    "views": "Aufrufe",
+    "rating": "Bewertung",
+    "new": "Neu",
+    "loginRequired": "Anmeldung erforderlich",
+    "login": "Anmelden"
+  },
+  "nav": {
+    "home": "Startseite",
+    "catalog": "Katalog",
+    "bookmarks": "Lesezeichen",
+    "voting": "Abstimmung",
+    "profile": "Profil",
+    "admin": "Admin",
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "logout": "Abmelden"
+  },
+  "home": {
+    "hero": {
+      "title": "Lesen Sie die besten Romane",
+      "subtitle": "Tausende von übersetzten Werken in 7 Sprachen"
+    },
+    "sections": {
+      "latestUpdates": "Neueste Updates",
+      "popular": "Beliebt",
+      "trending": "Trending",
+      "newReleases": "Neuerscheinungen",
+      "topRated": "Top bewertet",
+      "recommended": "Empfohlen",
+      "collections": "Sammlungen"
+    },
+    "voting": {
+      "title": "Für einen Roman abstimmen",
+      "description": "Wählen Sie das Buch, das wir als nächstes übersetzen",
+      "button": "Abstimmen"
+    },
+    "propose": {
+      "title": "Einen Roman vorschlagen",
+      "description": "Buch zur Übersetzungswarteschlange hinzufügen",
+      "button": "Vorschlagen"
+    }
+  },
+  "novel": {
+    "status": {
+      "ongoing": "Laufend",
+      "completed": "Abgeschlossen",
+      "paused": "Pausiert",
+      "dropped": "Abgebrochen"
+    },
+    "tabs": {
+      "description": "Beschreibung",
+      "chapters": "Kapitel",
+      "comments": "Kommentare"
+    },
+    "info": {
+      "author": "Autor",
+      "year": "Jahr",
+      "originalChapters": "Originalkapitel",
+      "translatedChapters": "Übersetzte Kapitel",
+      "genres": "Genres",
+      "tags": "Tags",
+      "altNames": "Alternative Namen"
+    },
+    "actions": {
+      "read": "Lesen",
+      "continue": "Fortsetzen",
+      "addBookmark": "Zu Lesezeichen hinzufügen",
+      "removeBookmark": "Aus Lesezeichen entfernen",
+      "vote": "Abstimmen",
+      "rate": "Bewerten",
+      "share": "Teilen"
+    }
+  },
+  "reader": {
+    "chapter": "Kapitel {number}",
+    "navigation": {
+      "prev": "Vorheriges Kapitel",
+      "next": "Nächstes Kapitel",
+      "toc": "Inhaltsverzeichnis"
+    },
+    "settings": {
+      "title": "Leseeinstellungen",
+      "fontSize": "Schriftgröße",
+      "theme": "Thema",
+      "lineHeight": "Zeilenhöhe"
+    },
+    "progress": {
+      "reading": "Lesen",
+      "saved": "Fortschritt gespeichert"
+    }
+  },
+  "catalog": {
+    "title": "Katalog",
+    "searchPlaceholder": "Romane suchen...",
+    "filtersLabel": "Filter",
+    "filters": {
+      "genres": "Genres",
+      "status": "Status",
+      "sortBy": "Sortieren nach",
+      "clear": "Löschen"
+    },
+    "sort": {
+      "newest": "Neueste",
+      "updated": "Kürzlich aktualisiert",
+      "popular": "Beliebteste",
+      "rating": "Höchste Bewertung",
+      "bookmarks": "Meiste Lesezeichen"
+    },
+    "noResults": "Keine Ergebnisse gefunden",
+    "resultsCount": "{count} Romane gefunden"
+  },
+  "bookmarks": {
+    "pageTitle": "Meine Lesezeichen",
+    "pageDescription": "Ihre gespeicherte Romanbibliothek",
+    "title": "Meine Lesezeichen",
+    "lists": {
+      "reading": "Lesen",
+      "planned": "Geplant zu lesen",
+      "dropped": "Abgebrochen",
+      "completed": "Abgeschlossen",
+      "favorites": "Favoriten"
+    },
+    "empty": "Keine Lesezeichen in dieser Liste",
+    "continueReading": "Fortsetzen",
+    "progress": "Fortschritt: {current} / {total}"
+  },
+  "profile": {
+    "title": "Profil",
+    "stats": {
+      "chaptersRead": "Gelesene Kapitel",
+      "readingTime": "Lesezeit",
+      "comments": "Kommentare",
+      "level": "Level"
+    },
+    "tabs": {
+      "bookmarks": "Lesezeichen",
+      "comments": "Kommentare",
+      "achievements": "Erfolge",
+      "settings": "Einstellungen"
+    },
+    "subscription": {
+      "free": "Kostenlos",
+      "premium": "Premium",
+      "upgrade": "Upgrade"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Anmelden",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "forgotPassword": "Passwort vergessen?",
+      "submit": "Anmelden",
+      "noAccount": "Haben Sie kein Konto?",
+      "register": "Registrieren"
+    },
+    "register": {
+      "title": "Registrieren",
+      "displayName": "Anzeigename",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "confirmPassword": "Passwort bestätigen",
+      "submit": "Konto erstellen",
+      "hasAccount": "Haben Sie bereits ein Konto?",
+      "login": "Anmelden"
+    },
+    "errors": {
+      "invalidCredentials": "Ungültige E-Mail oder Passwort",
+      "emailExists": "E-Mail wird bereits verwendet",
+      "passwordMismatch": "Passwörter stimmen nicht überein",
+      "weakPassword": "Passwort muss mindestens 8 Zeichen lang sein"
+    }
+  },
+  "comments": {
+    "title": "Kommentare",
+    "write": "Kommentar schreiben...",
+    "submit": "Senden",
+    "reply": "Antworten",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "report": "Melden",
+    "spoiler": "Spoiler",
+    "empty": "Noch keine Kommentare",
+    "loadMore": "Mehr laden"
+  },
+  "errors": {
+    "notFound": "Seite nicht gefunden",
+    "serverError": "Serverfehler",
+    "unauthorized": "Autorisierung erforderlich",
+    "forbidden": "Zugriff verweigert",
+    "goHome": "Zur Startseite"
+  },
+  "wallet": {
+    "title": "Geldbörse",
+    "dailyVotes": "Tägliche Stimmen",
+    "novelRequests": "Roman-Anfragen",
+    "translationTickets": "Übersetzungstickets"
+  },
+  "admin": {},
+  "voting": {},
+  "subscriptions": {}
+}

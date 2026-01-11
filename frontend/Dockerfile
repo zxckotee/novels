@@ -44,9 +44,14 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copy necessary files from builder
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Copy public directory
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Copy standalone build - this includes server.js and node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+
+# Copy static files to the correct location
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app
@@ -64,4 +69,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
 # Start the application
-CMD ["node", "server.js"]
+# Check if server.js exists, if not fall back to npm start
+CMD if [ -f server.js ]; then node server.js; else npm start; fi

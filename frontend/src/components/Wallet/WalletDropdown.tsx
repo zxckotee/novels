@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,7 @@ interface WalletInfo {
 
 export function WalletDropdown() {
   const t = useTranslations('wallet');
+  const locale = useLocale();
   const { user, isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -129,7 +130,7 @@ export function WalletDropdown() {
                   </div>
                 </div>
                 <Link
-                  href="/voting"
+                  href={`/${locale}/voting`}
                   className="px-3 py-1 text-sm bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
                   onClick={() => setIsOpen(false)}
                 >
@@ -151,7 +152,7 @@ export function WalletDropdown() {
                   </div>
                 </div>
                 <Link
-                  href="/proposals/new"
+                  href={`/${locale}/proposals/new`}
                   className="px-3 py-1 text-sm bg-purple-500 text-white rounded-full hover:bg-purple-600 transition-colors"
                   onClick={() => setIsOpen(false)}
                 >
@@ -187,7 +188,7 @@ export function WalletDropdown() {
             {/* Links */}
             <div className="mt-4 pt-4 border-t border-border space-y-2">
               <Link
-                href="/wallet/transactions"
+                href={`/${locale}/wallet`}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface rounded-lg transition-colors"
                 onClick={() => setIsOpen(false)}
               >
@@ -197,7 +198,7 @@ export function WalletDropdown() {
                 {t('transactionHistory')}
               </Link>
               <Link
-                href="/subscriptions"
+                href={`/${locale}/subscriptions`}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface rounded-lg transition-colors"
                 onClick={() => setIsOpen(false)}
               >

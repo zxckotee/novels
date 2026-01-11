@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { Search, Filter, X, ChevronDown, Grid, List } from 'lucide-react';
@@ -27,7 +27,7 @@ const SORT_OPTIONS = [
   { value: 'created', label: 'По дате добавления' },
 ] as const;
 
-export default function CatalogPage() {
+function CatalogPageContent() {
   const t = useTranslations('catalog');
   const locale = useLocale();
   const router = useRouter();
@@ -136,7 +136,7 @@ export default function CatalogPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('searchPlaceholder')}
-              className="input-primary w-full pl-10 pr-4"
+              className="input pl-10 pr-10"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />
             {searchQuery && (
@@ -163,7 +163,7 @@ export default function CatalogPage() {
           className={`btn-secondary flex items-center gap-2 ${showFilters ? 'ring-2 ring-accent-primary' : ''}`}
         >
           <Filter className="w-4 h-4" />
-          {t('filters')}
+          {t('filtersLabel')}
           {hasActiveFilters && (
             <span className="bg-accent-primary text-white text-xs px-1.5 py-0.5 rounded-full">
               {(filters.genres?.length || 0) + (filters.tags?.length || 0) + (filters.status ? 1 : 0)}
@@ -176,7 +176,7 @@ export default function CatalogPage() {
           <select
             value={filters.sort}
             onChange={(e) => updateFilters({ sort: e.target.value as NovelFiltersType['sort'] })}
-            className="input-primary pr-8 appearance-none cursor-pointer"
+            className="input pr-10 appearance-none cursor-pointer"
           >
             {SORT_OPTIONS.map(option => (
               <option key={option.value} value={option.value}>
@@ -192,7 +192,7 @@ export default function CatalogPage() {
           <select
             value={filters.status || ''}
             onChange={(e) => updateFilters({ status: e.target.value as NovelFiltersType['status'] || undefined })}
-            className="input-primary pr-8 appearance-none cursor-pointer"
+            className="input pr-10 appearance-none cursor-pointer"
           >
             {STATUS_OPTIONS.map(option => (
               <option key={option.value} value={option.value}>
@@ -399,5 +399,13 @@ export default function CatalogPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function CatalogPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CatalogPageContent />
+    </Suspense>
   );
 }

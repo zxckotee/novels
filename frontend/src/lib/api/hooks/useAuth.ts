@@ -23,7 +23,10 @@ interface RegisterRequest {
 
 interface AuthResponse {
   user: User;
-  accessToken: string;
+  access_token: string;
+  refresh_token?: string;
+  token_type?: string;
+  expires_in?: number;
 }
 
 // Convert API User to Store User
@@ -55,16 +58,40 @@ export function useCurrentUser() {
 
 // Get user profile
 export function useUserProfile() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user: authUser } = useAuthStore();
   
   return useQuery({
     queryKey: authKeys.profile,
     queryFn: async () => {
-      const response = await api.get<UserProfile>('/profile');
-      return response.data;
+      // TODO: Backend doesn't have /profile endpoint yet
+      // Using /auth/me as fallback, but it needs to be fully implemented
+      try {
+        const response = await api.get<User>('/auth/me');
+        const user = response.data;
+        // Return a minimal profile structure until backend implements full profile endpoint
+        // Add defaults for missing fields from authUser store as fallback
+        return {
+          id: user.id || authUser?.id || '',
+          email: user.email || authUser?.email || '',
+          displayName: user.displayName || authUser?.displayName || '',
+          avatarUrl: user.avatarUrl || authUser?.avatarUrl,
+          role: user.role || (authUser?.roles?.[0] as any) || 'user',
+          level: user.level ?? 1,
+          xp: user.xp ?? 0,
+          createdAt: user.createdAt || new Date().toISOString(),
+          readChaptersCount: 0,
+          readingTime: 0,
+          commentsCount: 0,
+          bookmarksCount: 0,
+        } as UserProfile;
+      } catch (error) {
+        // If endpoint doesn't exist, return null to show error state
+        throw error;
+      }
     },
     enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: false, // Don't retry if endpoint doesn't exist
   });
 }
 
@@ -80,7 +107,7 @@ export function useLogin() {
     },
     onSuccess: (data) => {
       const storeUser = convertApiUserToStoreUser(data.user);
-      login(storeUser, data.accessToken);
+      login(storeUser, data.access_token);
       queryClient.setQueryData(authKeys.user, data.user);
     },
   });
@@ -98,7 +125,7 @@ export function useRegister() {
     },
     onSuccess: (data) => {
       const storeUser = convertApiUserToStoreUser(data.user);
-      login(storeUser, data.accessToken);
+      login(storeUser, data.access_token);
       queryClient.setQueryData(authKeys.user, data.user);
     },
   });
@@ -131,11 +158,11 @@ export function useRefreshToken() {
   
   return useMutation({
     mutationFn: async () => {
-      const response = await api.post<{ accessToken: string }>('/auth/refresh');
+      const response = await api.post<{ access_token: string }>('/auth/refresh');
       return response.data;
     },
     onSuccess: (data) => {
-      setAccessToken(data.accessToken);
+      setAccessToken(data.access_token);
     },
   });
 }

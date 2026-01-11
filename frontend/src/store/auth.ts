@@ -64,6 +64,9 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
+      // Prevent pre-hydration state mismatch between server and client.
+      // We'll manually trigger rehydration in app Providers after mount.
+      skipHydration: true,
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,

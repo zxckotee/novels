@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -64,6 +64,7 @@ interface WalletInfo {
 
 export default function VotingPageClient() {
   const t = useTranslations('voting');
+  const locale = useLocale();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [voteAmount, setVoteAmount] = useState<{ [key: string]: number }>({});
@@ -151,14 +152,14 @@ export default function VotingPageClient() {
         
         <div className="flex gap-3">
           <Link
-            href="/proposals"
+            href={`/${locale}/proposals`}
             className="px-4 py-2 bg-surface-elevated text-text-primary rounded-lg hover:bg-surface-muted transition-colors"
           >
             {t('viewAll')}
           </Link>
           {isAuthenticated && (
             <Link
-              href="/proposals/new"
+              href={`/${locale}/proposals/new`}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
             >
               {t('proposeNovel')}
@@ -260,7 +261,7 @@ export default function VotingPageClient() {
           <div className="text-center py-12">
             <p className="text-text-muted">{t('noProposals')}</p>
             <Link
-              href="/proposals/new"
+              href={`/${locale}/proposals/new`}
               className="inline-block mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
             >
               {t('beFirst')}

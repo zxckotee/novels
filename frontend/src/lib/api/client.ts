@@ -43,12 +43,12 @@ apiClient.interceptors.response.use(
           { withCredentials: true }
         );
         
-        const { accessToken } = response.data.data;
-        useAuthStore.getState().setAccessToken(accessToken);
+        const { access_token } = response.data.data;
+        useAuthStore.getState().setAccessToken(access_token);
         
         // Retry original request
         if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          originalRequest.headers.Authorization = `Bearer ${access_token}`;
         }
         return apiClient(originalRequest);
       } catch (refreshError) {

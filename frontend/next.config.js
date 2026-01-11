@@ -6,6 +6,16 @@ const withNextIntl = createNextIntlPlugin();
 const nextConfig = {
   reactStrictMode: true,
   
+  // Standalone output for Docker
+  output: 'standalone',
+  
+  // Webpack configuration to suppress warnings for dynamic imports
+  webpack: (config, { isServer }) => {
+    // Suppress module not found warnings for dynamic imports in messages directory
+    config.module.exprContextCritical = false;
+    return config;
+  },
+  
   // Настройки изображений
   images: {
     remotePatterns: [
@@ -19,6 +29,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'api.novels.app',
         pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+        pathname: '/**',
       },
     ],
     formats: ['image/avif', 'image/webp'],

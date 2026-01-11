@@ -184,11 +184,25 @@ func (r *UserRepository) SaveRefreshToken(ctx context.Context, token *models.Ref
 	query := `
 		INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at)
 		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (token_hash) DO NOTHING
 	`
-	_, err := r.db.ExecContext(ctx, query, token.ID, token.UserID, token.TokenHash, token.ExpiresAt, token.CreatedAt)
+	result, err := r.db.ExecContext(ctx, query, token.ID, token.UserID, token.TokenHash, token.ExpiresAt, token.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to save refresh token: %w", err)
 	}
+	
+	// Проверяем, что строка была вставлена (не было конфликта)
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		// Токен с таким хэшем уже существует - это нормально при race condition
+		// или если токен был создан одновременно с одинаковыми данными
+		// Игнорируем конфликт, так как токен уже существует в базе
+		return nil
+	}
+	
 	return nil
 }
 
