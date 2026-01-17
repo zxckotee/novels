@@ -227,9 +227,20 @@ func (r *CollectionRepository) UpdateItem(ctx context.Context, collectionID, nov
 func (r *CollectionRepository) GetItems(ctx context.Context, collectionID uuid.UUID) ([]models.CollectionItem, error) {
 	var items []models.CollectionItem
 	query := `
-		SELECT ci.*, n.slug as novel_slug
+		SELECT
+			ci.*,
+			n.slug as novel_slug,
+			COALESCE(nl.title, n.slug) as novel_title,
+			CASE
+				WHEN n.cover_image_key IS NOT NULL AND n.cover_image_key != '' THEN '/uploads/' || n.cover_image_key
+				ELSE NULL
+			END as novel_cover_url,
+			COALESCE(n.rating_sum::float / NULLIF(n.rating_count, 0), 0) as novel_rating,
+			nl.description as novel_description,
+			n.translation_status as novel_translation_status
 		FROM collection_items ci
 		JOIN novels n ON ci.novel_id = n.id
+		LEFT JOIN novel_localizations nl ON nl.novel_id = n.id AND nl.lang = 'ru'
 		WHERE ci.collection_id = $1
 		ORDER BY ci.position`
 
@@ -305,10 +316,10 @@ func (r *CollectionRepository) IncrementViews(ctx context.Context, id uuid.UUID)
 func (r *CollectionRepository) GetPreviewCovers(ctx context.Context, collectionID uuid.UUID, limit int) ([]string, error) {
 	var covers []string
 	query := `
-		SELECT n.cover_url
+		SELECT '/uploads/' || n.cover_image_key
 		FROM collection_items ci
 		JOIN novels n ON ci.novel_id = n.id
-		WHERE ci.collection_id = $1 AND n.cover_url IS NOT NULL AND n.cover_url != ''
+		WHERE ci.collection_id = $1 AND n.cover_image_key IS NOT NULL AND n.cover_image_key != ''
 		ORDER BY ci.position
 		LIMIT $2`
 

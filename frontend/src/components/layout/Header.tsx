@@ -16,9 +16,10 @@ import {
   Globe,
   Settings,
   LogOut,
+  Shield,
 } from 'lucide-react';
 import { locales, localeNames, localeFlags, type Locale } from '@/i18n/config';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, isAdmin } from '@/store/auth';
 
 export function Header() {
   const t = useTranslations('nav');
@@ -263,6 +264,16 @@ export function Header() {
                           <Settings className="w-4 h-4" />
                           Настройки
                         </Link>
+                        {isAdmin(user) && (
+                          <Link
+                            href={`/${locale}/admin`}
+                            onClick={() => setProfileMenuOpen(false)}
+                            className="dropdown-item w-full text-left flex items-center gap-2 text-accent-warning hover:bg-accent-warning/10"
+                          >
+                            <Shield className="w-4 h-4" />
+                            Админка
+                          </Link>
+                        )}
                         <button
                           onClick={handleLogout}
                           className="dropdown-item w-full text-left flex items-center gap-2 text-red-500 hover:bg-red-500/10"

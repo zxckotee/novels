@@ -36,7 +36,7 @@ function convertApiUserToStoreUser(apiUser: User): StoreUser {
     email: apiUser.email,
     displayName: apiUser.displayName,
     avatarUrl: apiUser.avatarUrl,
-    roles: [apiUser.role], // Convert single role to array
+    roles: apiUser.roles || [], // API already returns roles as array
   };
 }
 
@@ -75,7 +75,7 @@ export function useUserProfile() {
           email: user.email || authUser?.email || '',
           displayName: user.displayName || authUser?.displayName || '',
           avatarUrl: user.avatarUrl || authUser?.avatarUrl,
-          role: user.role || (authUser?.roles?.[0] as any) || 'user',
+          roles: user.roles || authUser?.roles || [],
           level: user.level ?? 1,
           xp: user.xp ?? 0,
           createdAt: user.createdAt || new Date().toISOString(),

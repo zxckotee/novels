@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -444,4 +445,189 @@ func (r *CommentRepository) GetReplies(ctx context.Context, parentID uuid.UUID, 
 	}
 
 	return response.Comments, nil
+}
+
+// ========================
+// ADMIN METHODS
+// ========================
+
+// AdminListComments получает список комментариев для админа с расширенными фильтрами
+func (r *CommentRepository) AdminListComments(ctx context.Context, filter models.AdminCommentsFilter) ([]models.Comment, int, error) {
+	baseQuery := `FROM comments c`
+	whereConditions := []string{}
+	args := []interface{}{}
+	argIndex := 1
+
+	if filter.TargetType != "" {
+		whereConditions = append(whereConditions, fmt.Sprintf("c.target_type = $%d", argIndex))
+		args = append(args, filter.TargetType)
+		argIndex++
+	}
+
+	if filter.TargetID != nil {
+		whereConditions = append(whereConditions, fmt.Sprintf("c.target_id = $%d", argIndex))
+		args = append(args, *filter.TargetID)
+		argIndex++
+	}
+
+	if filter.UserID != nil {
+		whereConditions = append(whereConditions, fmt.Sprintf("c.user_id = $%d", argIndex))
+		args = append(args, *filter.UserID)
+		argIndex++
+	}
+
+	if filter.IsDeleted != nil {
+		whereConditions = append(whereConditions, fmt.Sprintf("c.is_deleted = $%d", argIndex))
+		args = append(args, *filter.IsDeleted)
+		argIndex++
+	}
+
+	whereClause := ""
+	if len(whereConditions) > 0 {
+		whereClause = "WHERE " + strings.Join(whereConditions, " AND ")
+	}
+
+	var total int
+	err := r.db.GetContext(ctx, &total, "SELECT COUNT(*) "+baseQuery+" "+whereClause, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	orderBy := "c.created_at DESC"
+	if filter.Sort == "oldest" {
+		orderBy = "c.created_at ASC"
+	} else if filter.Sort == "reports" {
+		orderBy = "(SELECT COUNT(*) FROM comment_reports WHERE comment_id = c.id) DESC"
+	}
+
+	selectQuery := fmt.Sprintf(`
+		SELECT c.id, c.parent_id, c.root_id, c.depth,
+		       c.target_type, c.target_id, c.user_id, c.body,
+		       c.is_deleted, c.is_spoiler,
+		       c.likes_count, c.dislikes_count, c.replies_count,
+		       c.created_at, c.updated_at
+		%s %s
+		ORDER BY %s
+		LIMIT $%d OFFSET $%d
+	`, baseQuery, whereClause, orderBy, argIndex, argIndex+1)
+
+	offset := (filter.Page - 1) * filter.Limit
+	args = append(args, filter.Limit, offset)
+
+	var comments []models.Comment
+	err = r.db.SelectContext(ctx, &comments, selectQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return comments, total, nil
+}
+
+// SoftDeleteComment помечает комментарий как удаленный
+func (r *CommentRepository) SoftDeleteComment(ctx context.Context, commentID uuid.UUID) error {
+	return r.Delete(ctx, commentID)
+}
+
+// HardDeleteComment полностью удаляет комментарий
+func (r *CommentRepository) HardDeleteComment(ctx context.Context, commentID uuid.UUID) error {
+	return r.HardDelete(ctx, commentID)
+}
+
+// GetReports получает список жалоб с фильтрацией
+func (r *CommentRepository) GetReports(ctx context.Context, filter models.ReportsFilter) ([]models.CommentReport, int, error) {
+	baseQuery := `FROM comment_reports cr`
+	whereConditions := []string{}
+	args := []interface{}{}
+	argIndex := 1
+
+	if filter.Status != "" {
+		whereConditions = append(whereConditions, fmt.Sprintf("cr.status = $%d", argIndex))
+		args = append(args, filter.Status)
+		argIndex++
+	}
+
+	if filter.CommentID != nil {
+		whereConditions = append(whereConditions, fmt.Sprintf("cr.comment_id = $%d", argIndex))
+		args = append(args, *filter.CommentID)
+		argIndex++
+	}
+
+	if filter.ReporterID != nil {
+		whereConditions = append(whereConditions, fmt.Sprintf("cr.user_id = $%d", argIndex))
+		args = append(args, *filter.ReporterID)
+		argIndex++
+	}
+
+	whereClause := ""
+	if len(whereConditions) > 0 {
+		whereClause = "WHERE " + strings.Join(whereConditions, " AND ")
+	}
+
+	var total int
+	err := r.db.GetContext(ctx, &total, "SELECT COUNT(*) "+baseQuery+" "+whereClause, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	orderBy := "cr.created_at DESC"
+	if filter.Sort == "oldest" {
+		orderBy = "cr.created_at ASC"
+	}
+
+	selectQuery := fmt.Sprintf(`
+		SELECT cr.id, cr.comment_id, cr.user_id, cr.reason, cr.status, cr.created_at, cr.updated_at
+		%s %s
+		ORDER BY %s
+		LIMIT $%d OFFSET $%d
+	`, baseQuery, whereClause, orderBy, argIndex, argIndex+1)
+
+	offset := (filter.Page - 1) * filter.Limit
+	args = append(args, filter.Limit, offset)
+
+	var reports []models.CommentReport
+	err = r.db.SelectContext(ctx, &reports, selectQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return reports, total, nil
+}
+
+// ResolveReport обрабатывает жалобу
+func (r *CommentRepository) ResolveReport(ctx context.Context, reportID uuid.UUID, action, reason string) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Получаем жалобу
+	var report models.CommentReport
+	err = tx.GetContext(ctx, &report, `SELECT id, comment_id, user_id, reason, status FROM comment_reports WHERE id = $1`, reportID)
+	if err != nil {
+		return err
+	}
+
+	// Выполняем действие
+	switch action {
+	case "resolve":
+		_, err = tx.ExecContext(ctx, `UPDATE comment_reports SET status = 'resolved', updated_at = NOW() WHERE id = $1`, reportID)
+	case "dismiss":
+		_, err = tx.ExecContext(ctx, `UPDATE comment_reports SET status = 'dismissed', updated_at = NOW() WHERE id = $1`, reportID)
+	case "delete_comment":
+		// Удаляем комментарий
+		_, err = tx.ExecContext(ctx, `UPDATE comments SET is_deleted = true, body = '[удалено]' WHERE id = $1`, report.CommentID)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE comment_reports SET status = 'resolved', updated_at = NOW() WHERE id = $1`, reportID)
+	default:
+		return fmt.Errorf("invalid action: %s", action)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

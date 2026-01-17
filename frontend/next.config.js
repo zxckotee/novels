@@ -35,6 +35,11 @@ const nextConfig = {
         hostname: 'via.placeholder.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'remanga.org',
+        pathname: '/**',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
   },

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { useTranslations, useLocale } from 'next-intl';
+import { useLocale } from 'next-intl';
 import { 
   BookOpen, 
   FileText, 
@@ -11,24 +11,28 @@ import {
   Plus,
   BarChart3,
   MessageSquare,
-  Flag
+  Flag,
+  Layers
 } from 'lucide-react';
-import { useAuthStore, isModerator } from '@/store/auth';
+import { useAuthStore, isAdmin } from '@/store/auth';
 import { useRouter } from 'next/navigation';
 
 export default function AdminDashboard() {
-  const t = useTranslations('admin');
   const locale = useLocale();
   const router = useRouter();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isLoading } = useAuthStore();
   
-  // Check admin access
-  if (!isAuthenticated || !isModerator(user)) {
-    if (typeof window !== 'undefined') {
-      router.push(`/${locale}`);
+  const hasAccess = isAuthenticated && isAdmin(user);
+
+  // Redirect must happen in an effect (not during render)
+  useEffect(() => {
+    if (!isLoading && !hasAccess) {
+      router.replace(`/${locale}`);
     }
-    return null;
-  }
+  }, [isLoading, hasAccess, router, locale]);
+
+  if (isLoading) return null;
+  if (!hasAccess) return null;
   
   return (
     <div className="container-custom py-6">
@@ -95,6 +99,7 @@ export default function AdminDashboard() {
           <nav className="space-y-2">
             <AdminLink href={`/${locale}/admin/novels`} label="Все новеллы" count={0} />
             <AdminLink href={`/${locale}/admin/chapters`} label="Все главы" count={0} />
+            <AdminLink href={`/${locale}/admin/collections`} label="Коллекции" />
             <AdminLink href={`/${locale}/admin/genres`} label="Жанры" />
             <AdminLink href={`/${locale}/admin/tags`} label="Теги" />
             <AdminLink href={`/${locale}/admin/authors`} label="Авторы" />

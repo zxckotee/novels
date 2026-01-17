@@ -4,21 +4,37 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { 
-  User, 
-  BookOpen, 
-  Clock, 
-  MessageSquare, 
+import {
+  User,
+  BookOpen,
+  Clock,
+  MessageSquare,
   Bookmark,
   Award,
   Settings,
   Crown,
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  Sparkles
 } from 'lucide-react';
 import { useUserProfile, useCurrentUser } from '@/lib/api/hooks/useAuth';
 import { useAuthStore } from '@/store/auth';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { hasRole } from '@/store/auth';
+
+interface UserSubscriptionInfo {
+  hasActiveSubscription: boolean;
+  subscription?: {
+    id: string;
+    endsAt: string;
+  };
+  plan?: {
+    title: string;
+    code: string;
+  };
+}
 
 // XP needed for each level (example progression)
 const XP_PER_LEVEL = 1000;
@@ -41,6 +57,16 @@ export default function ProfilePageClient() {
   const [mounted, setMounted] = useState(false);
   
   const { data: profile, isLoading, error } = useUserProfile();
+  
+  // Fetch subscription info
+  const { data: subscriptionInfo } = useQuery<UserSubscriptionInfo>({
+    queryKey: ['my-subscription'],
+    queryFn: async () => {
+      const response = await api.get<UserSubscriptionInfo>('/subscriptions/me');
+      return response.data;
+    },
+    enabled: isAuthenticated,
+  });
   
   // Handle mount to prevent hydration mismatch
   useEffect(() => {
@@ -120,15 +146,15 @@ export default function ProfilePageClient() {
           <div className="flex-1 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
               <h1 className="text-2xl font-heading font-bold">{profile.displayName}</h1>
-              {profile.role === 'premium' && (
+              {profile.roles?.includes('premium') && (
                 <span title="Premium">
                   <Crown className="w-5 h-5 text-accent-warning" />
                 </span>
               )}
-              {profile.role === 'moderator' && (
+              {profile.roles?.includes('moderator') && (
                 <span className="bg-status-info/20 text-status-info text-xs px-2 py-0.5 rounded">Модератор</span>
               )}
-              {profile.role === 'admin' && (
+              {profile.roles?.includes('admin') && (
                 <span className="bg-status-error/20 text-status-error text-xs px-2 py-0.5 rounded">Админ</span>
               )}
             </div>
@@ -173,6 +199,44 @@ export default function ProfilePageClient() {
               <Settings className="w-5 h-5" />
             </Link>
           </div>
+        </div>
+      </div>
+      
+      {/* Subscription Info */}
+      <div className="bg-background-secondary rounded-card p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-accent-warning" />
+              Подписка
+            </h3>
+            {subscriptionInfo?.hasActiveSubscription ? (
+              <div>
+                <p className="text-foreground-secondary">
+                  Текущий план: <span className="font-semibold text-accent-primary">{subscriptionInfo.plan?.title}</span>
+                </p>
+                {subscriptionInfo.subscription?.endsAt && (
+                  <p className="text-sm text-foreground-muted mt-1">
+                    Действует до {new Date(subscriptionInfo.subscription.endsAt).toLocaleDateString('ru-RU', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-foreground-secondary">
+                Текущий план: <span className="font-semibold">Бесплатный</span>
+              </p>
+            )}
+          </div>
+          <Link
+            href={`/${locale}/subscriptions`}
+            className="btn-primary flex items-center gap-2"
+          >
+            {subscriptionInfo?.hasActiveSubscription ? 'Управление' : 'Улучшить'}
+          </Link>
         </div>
       </div>
       

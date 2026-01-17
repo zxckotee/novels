@@ -12,8 +12,9 @@ import {
   Save,
   Image as ImageIcon
 } from 'lucide-react';
-import { useAuthStore, isModerator } from '@/store/auth';
+import { useAuthStore, isAdmin } from '@/store/auth';
 import api from '@/lib/api/client';
+import { useEffect } from 'react';
 
 interface NovelFormData {
   slug: string;
@@ -60,20 +61,24 @@ export default function NewNovelPage() {
   const t = useTranslations('admin');
   const locale = useLocale();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { isAuthenticated, user, isLoading } = useAuthStore();
   
   const [formData, setFormData] = useState<NovelFormData>(initialFormData);
   const [altTitleInput, setAltTitleInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Check admin access
-  if (!user || !isModerator(user)) {
-    if (typeof window !== 'undefined') {
-      router.push(`/${locale}`);
+  const hasAccess = isAuthenticated && isAdmin(user);
+
+  // Redirect must happen in an effect (not during render)
+  useEffect(() => {
+    if (!isLoading && !hasAccess) {
+      router.replace(`/${locale}`);
     }
-    return null;
-  }
+  }, [isLoading, hasAccess, router, locale]);
+
+  if (isLoading) return null;
+  if (!hasAccess) return null;
   
   // Generate slug from Russian title
   const generateSlug = (title: string) => {
@@ -207,7 +212,7 @@ export default function NewNovelPage() {
                   type="text"
                   value={formData.titleRu}
                   onChange={(e) => updateField('titleRu', e.target.value)}
-                  className="input-primary w-full"
+                  className="input w-full"
                   placeholder="Введите название на русском"
                   required
                 />
@@ -222,7 +227,7 @@ export default function NewNovelPage() {
                   type="text"
                   value={formData.titleEn}
                   onChange={(e) => updateField('titleEn', e.target.value)}
-                  className="input-primary w-full"
+                  className="input w-full"
                   placeholder="Enter English title"
                 />
               </div>
@@ -236,7 +241,7 @@ export default function NewNovelPage() {
                   type="text"
                   value={formData.slug}
                   onChange={(e) => updateField('slug', e.target.value)}
-                  className="input-primary w-full font-mono"
+                  className="input w-full font-mono"
                   placeholder="novel-slug"
                   required
                 />
@@ -256,7 +261,7 @@ export default function NewNovelPage() {
                     value={altTitleInput}
                     onChange={(e) => setAltTitleInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAltTitle())}
-                    className="input-primary flex-1"
+                    className="input flex-1"
                     placeholder="Добавить альтернативное название"
                   />
                   <button
@@ -297,7 +302,7 @@ export default function NewNovelPage() {
                   type="text"
                   value={formData.authorName}
                   onChange={(e) => updateField('authorName', e.target.value)}
-                  className="input-primary w-full"
+                  className="input w-full"
                   placeholder="Имя автора"
                 />
               </div>
@@ -315,7 +320,7 @@ export default function NewNovelPage() {
                 <textarea
                   value={formData.descriptionRu}
                   onChange={(e) => updateField('descriptionRu', e.target.value)}
-                  className="input-primary w-full h-40 resize-y"
+                  className="input w-full h-40 resize-y"
                   placeholder="Введите описание новеллы на русском..."
                 />
               </div>
@@ -328,7 +333,7 @@ export default function NewNovelPage() {
                 <textarea
                   value={formData.descriptionEn}
                   onChange={(e) => updateField('descriptionEn', e.target.value)}
-                  className="input-primary w-full h-40 resize-y"
+                  className="input w-full h-40 resize-y"
                   placeholder="Enter English description..."
                 />
               </div>
@@ -360,7 +365,7 @@ export default function NewNovelPage() {
                 type="url"
                 value={formData.coverUrl}
                 onChange={(e) => updateField('coverUrl', e.target.value)}
-                className="input-primary w-full"
+                className="input w-full"
                 placeholder="URL обложки"
               />
               
@@ -381,7 +386,7 @@ export default function NewNovelPage() {
                 <select
                   value={formData.translationStatus}
                   onChange={(e) => updateField('translationStatus', e.target.value as any)}
-                  className="input-primary w-full"
+                  className="input w-full"
                 >
                   {STATUS_OPTIONS.map(option => (
                     <option key={option.value} value={option.value}>
@@ -400,7 +405,7 @@ export default function NewNovelPage() {
                   type="number"
                   value={formData.releaseYear}
                   onChange={(e) => updateField('releaseYear', parseInt(e.target.value) || 0)}
-                  className="input-primary w-full"
+                  className="input w-full"
                   min="1900"
                   max="2100"
                 />
@@ -415,7 +420,7 @@ export default function NewNovelPage() {
                   type="number"
                   value={formData.originalChaptersCount}
                   onChange={(e) => updateField('originalChaptersCount', parseInt(e.target.value) || 0)}
-                  className="input-primary w-full"
+                  className="input w-full"
                   min="0"
                 />
               </div>

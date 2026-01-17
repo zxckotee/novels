@@ -6,6 +6,24 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/auth';
+
+function nextImageSrcFromUserInput(value: string): string | null {
+  const src = value.trim();
+  if (!src) return null;
+  if (src.startsWith('/') || src.startsWith('http://') || src.startsWith('https://')) return src;
+  return null;
+}
+
+function nextImageSrcFromApi(value: string): string | null {
+  const src = value.trim();
+  if (!src) return null;
+  if (src.startsWith('/') || src.startsWith('http://') || src.startsWith('https://')) return src;
+  // Many backends store paths like "uploads/cover.jpg" without a leading slash.
+  return `/${src}`;
+}
+
+type ApiEnvelope<T> = { data: T };
 
 interface Collection {
   id: string;
@@ -45,10 +63,12 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
   const t = useTranslations('community');
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
+  const [coverPreviewError, setCoverPreviewError] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
   const [items, setItems] = useState<{ novelId: string; note: string; novel?: Novel }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,6 +79,7 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
   const [searching, setSearching] = useState(false);
 
   const isEditing = !!slug;
+  const coverPreviewSrc = nextImageSrcFromUserInput(coverUrl);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -75,15 +96,22 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
   const loadCollection = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/v1/collections/${slug}`);
+      const headers: Record<string, string> = {};
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+      const response = await fetch(`/api/v1/collections/${slug}`, {
+        headers,
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to load');
       
-      const data: Collection = await response.json();
-      setTitle(data.title);
-      setDescription(data.description || '');
-      setCoverUrl(data.coverUrl || '');
-      setIsPublic(data.isPublic);
-      setItems(data.items.map(item => ({
+      const result: ApiEnvelope<Collection> = await response.json();
+      const collection = result.data;
+      setTitle(collection.title);
+      setDescription(collection.description || '');
+      setCoverUrl(collection.coverUrl || '');
+      setIsPublic(collection.isPublic);
+      setItems(collection.items.map(item => ({
         novelId: item.novelId,
         note: item.note || '',
         novel: item.novel,
@@ -104,10 +132,10 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
         q: searchQuery,
         limit: '10',
       });
-      const response = await fetch(`/api/v1/novels?${params}`);
+      const response = await fetch(`/api/v1/novels/search?${params}`);
       if (response.ok) {
-        const data = await response.json();
-        setSearchResults(data.novels || []);
+        const result: ApiEnvelope<{ novels: Novel[] }> = await response.json();
+        setSearchResults(result.data.novels || []);
       }
     } catch (err) {
       console.error('Search error:', err);
@@ -157,35 +185,58 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
     setError(null);
 
     try {
-      const body = {
+      const collectionBody = {
         title: title.trim(),
         description: description.trim() || null,
         coverUrl: coverUrl.trim() || null,
         isPublic,
-        items: items.map((item, index) => ({
-          novelId: item.novelId,
-          note: item.note || null,
-          position: index,
-        })),
       };
 
       const url = isEditing 
         ? `/api/v1/collections/${slug}`
         : '/api/v1/collections';
 
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
       const response = await fetch(url, {
         method: isEditing ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        headers,
+        credentials: 'include',
+        body: JSON.stringify(collectionBody),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save');
+        const errorData: any = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error?.message || errorData?.message || 'Failed to save');
       }
 
-      const data = await response.json();
-      router.push(`/${locale}/collections/${data.slug}`);
+      const result: ApiEnvelope<{ id: string; slug: string }> = await response.json();
+      const collectionId = result.data.id;
+
+      // Добавляем элементы коллекции отдельными запросами (эндпоинт create не принимает items)
+      if (!isEditing && items.length > 0) {
+        for (let index = 0; index < items.length; index++) {
+          const item = items[index];
+          const addItemResponse = await fetch(`/api/v1/collections/${collectionId}/items`, {
+            method: 'POST',
+            headers,
+            credentials: 'include',
+            body: JSON.stringify({
+              novelId: item.novelId,
+              position: index,
+              note: item.note || '',
+            }),
+          });
+          if (!addItemResponse.ok) {
+            const errorData: any = await addItemResponse.json().catch(() => ({}));
+            throw new Error(errorData?.error?.message || errorData?.message || 'Failed to add item');
+          }
+        }
+      }
+
+      // Backend коллекции читаются по ID (UUID) на /api/v1/collections/{id}
+      router.push(`/${locale}/collections/${collectionId}`);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -266,21 +317,32 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
               <input
                 type="url"
                 value={coverUrl}
-                onChange={(e) => setCoverUrl(e.target.value)}
+                onChange={(e) => {
+                  setCoverUrl(e.target.value);
+                  setCoverPreviewError(false);
+                }}
                 className="w-full px-4 py-3 bg-[#121212] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
                 placeholder="https://example.com/cover.jpg"
               />
-              {coverUrl && (
+              {coverUrl && !coverPreviewSrc && (
+                <p className="mt-2 text-sm text-yellow-300">
+                  URL должен начинаться с <span className="font-mono">https://</span> или <span className="font-mono">/</span>
+                </p>
+              )}
+              {coverPreviewSrc && !coverPreviewError && (
                 <div className="mt-2">
                   <Image
-                    src={coverUrl}
+                    src={coverPreviewSrc}
                     alt="Preview"
                     width={100}
                     height={140}
                     className="rounded-lg object-cover"
-                    onError={() => setCoverUrl('')}
+                    onError={() => setCoverPreviewError(true)}
                   />
                 </div>
+              )}
+              {coverPreviewSrc && coverPreviewError && (
+                <p className="mt-2 text-sm text-red-300">Не удалось загрузить изображение превью</p>
               )}
             </div>
 
@@ -325,15 +387,17 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
             {/* Результаты поиска */}
             {searchResults.length > 0 && (
               <div className="mb-6 space-y-2 max-h-60 overflow-y-auto">
-                {searchResults.map((novel) => (
+                {searchResults.map((novel) => {
+                  const novelCoverSrc = novel.coverUrl ? nextImageSrcFromApi(novel.coverUrl) : null;
+                  return (
                   <div
                     key={novel.id}
                     className="flex items-center justify-between p-3 bg-[#121212] rounded-lg"
                   >
                     <div className="flex items-center gap-3">
-                      {novel.coverUrl ? (
+                      {novelCoverSrc ? (
                         <Image
-                          src={novel.coverUrl}
+                          src={novelCoverSrc}
                           alt={novel.title}
                           width={40}
                           height={56}
@@ -354,7 +418,8 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
                       +
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -367,7 +432,9 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
               {items.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">{t('noNovelsAdded')}</p>
               ) : (
-                items.map((item, index) => (
+                items.map((item, index) => {
+                  const itemCoverSrc = item.novel?.coverUrl ? nextImageSrcFromApi(item.novel.coverUrl) : null;
+                  return (
                   <div
                     key={item.novelId}
                     className="flex flex-col gap-3 p-4 bg-[#121212] rounded-lg"
@@ -399,9 +466,9 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
                       </span>
 
                       {/* Обложка */}
-                      {item.novel?.coverUrl ? (
+                      {itemCoverSrc ? (
                         <Image
-                          src={item.novel.coverUrl}
+                          src={itemCoverSrc}
                           alt={item.novel.title}
                           width={40}
                           height={56}
@@ -438,7 +505,8 @@ export default function CollectionFormClient({ locale, slug }: CollectionFormCli
                       placeholder={t('addNote')}
                     />
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

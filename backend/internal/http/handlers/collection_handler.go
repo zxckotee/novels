@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -360,7 +361,16 @@ func (h *CollectionHandler) Vote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.collectionService.Vote(r.Context(), collectionID, userID); err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to vote")
+		switch {
+		case errors.Is(err, service.ErrNotFound):
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "Collection not found")
+		case errors.Is(err, service.ErrNotAuthorized):
+			response.Error(w, http.StatusForbidden, "FORBIDDEN", "Not allowed to vote on this collection")
+		case errors.Is(err, service.ErrInvalidAction):
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		default:
+			response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to vote")
+		}
 		return
 	}
 

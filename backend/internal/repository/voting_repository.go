@@ -140,25 +140,30 @@ func (r *VotingRepository) GetProposalWithUser(ctx context.Context, id uuid.UUID
 func (r *VotingRepository) ListProposals(ctx context.Context, filter models.ProposalFilter) ([]models.NovelProposal, int, error) {
 	proposals := []models.NovelProposal{}
 	
-	baseQuery := `FROM novel_proposals np WHERE 1=1`
+	whereClauses := []string{"1=1"}
 	args := []interface{}{}
 	argNum := 1
 	
 	if filter.Status != nil {
-		baseQuery += fmt.Sprintf(" AND np.status = $%d", argNum)
+		whereClauses = append(whereClauses, fmt.Sprintf("np.status = $%d", argNum))
 		args = append(args, *filter.Status)
 		argNum++
 	}
 	
 	if filter.UserID != nil {
-		baseQuery += fmt.Sprintf(" AND np.user_id = $%d", argNum)
+		whereClauses = append(whereClauses, fmt.Sprintf("np.user_id = $%d", argNum))
 		args = append(args, *filter.UserID)
 		argNum++
 	}
 	
+	whereClause := "WHERE " + whereClauses[0]
+	for i := 1; i < len(whereClauses); i++ {
+		whereClause += " AND " + whereClauses[i]
+	}
+	
 	// Count total
 	var total int
-	countQuery := "SELECT COUNT(*) " + baseQuery
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM novel_proposals np %s", whereClause)
 	err := r.db.GetContext(ctx, &total, countQuery, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("count proposals: %w", err)
@@ -177,7 +182,7 @@ func (r *VotingRepository) ListProposals(ctx context.Context, filter models.Prop
 	
 	// Get proposals
 	selectQuery := fmt.Sprintf(`
-		SELECT 
+		SELECT
 			np.id, np.user_id, np.original_link, np.status,
 			np.title, np.alt_titles, np.author, np.description, np.cover_url,
 			np.genres, np.tags, np.vote_score, np.votes_count,
@@ -186,13 +191,14 @@ func (r *VotingRepository) ListProposals(ctx context.Context, filter models.Prop
 			COALESCE(up.display_name, u.email) as user_display_name,
 			up.avatar_key as user_avatar,
 			COALESCE(ux.level, 1) as user_level
-		%s
+		FROM novel_proposals np
 		LEFT JOIN users u ON np.user_id = u.id
 		LEFT JOIN user_profiles up ON np.user_id = up.user_id
 		LEFT JOIN user_xp ux ON np.user_id = ux.user_id
+		%s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, baseQuery, orderBy, argNum, argNum+1)
+	`, whereClause, orderBy, argNum, argNum+1)
 	
 	args = append(args, filter.Limit, (filter.Page-1)*filter.Limit)
 	

@@ -265,3 +265,150 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, userID uuid.UUID, p
 	}
 	return nil
 }
+
+// ========================
+// ADMIN METHODS
+// ========================
+
+// ListUsers получает список пользователей с фильтрацией
+func (r *UserRepository) ListUsers(ctx context.Context, filter models.UsersFilter) ([]models.User, int, error) {
+	baseQuery := `
+		FROM users u
+		JOIN user_profiles p ON u.id = p.user_id
+	`
+	whereConditions := []string{}
+	args := []interface{}{}
+	argIndex := 1
+
+	// Поиск по email или display_name
+	if filter.Query != "" {
+		whereConditions = append(whereConditions, fmt.Sprintf("(u.email ILIKE $%d OR p.display_name ILIKE $%d)", argIndex, argIndex))
+		args = append(args, "%"+filter.Query+"%")
+		argIndex++
+	}
+
+	// Фильтр по роли
+	if filter.Role != "" {
+		baseQuery += fmt.Sprintf(` JOIN user_roles ur ON u.id = ur.user_id AND ur.role = $%d`, argIndex)
+		args = append(args, filter.Role)
+		argIndex++
+	}
+
+	// Фильтр banned
+	if filter.Banned != nil {
+		whereConditions = append(whereConditions, fmt.Sprintf("u.is_banned = $%d", argIndex))
+		args = append(args, *filter.Banned)
+		argIndex++
+	}
+
+	whereClause := ""
+	if len(whereConditions) > 0 {
+		whereClause = "WHERE " + fmt.Sprintf("%s", whereConditions[0])
+		for i := 1; i < len(whereConditions); i++ {
+			whereClause += " AND " + whereConditions[i]
+		}
+	}
+
+	// Count
+	var total int
+	err := r.db.GetContext(ctx, &total, "SELECT COUNT(DISTINCT u.id) "+baseQuery+" "+whereClause, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count users: %w", err)
+	}
+
+	// Sort
+	orderBy := "u.created_at"
+	if filter.Sort == "login" {
+		orderBy = "u.last_login_at"
+	} else if filter.Sort == "name" {
+		orderBy = "p.display_name"
+	}
+	order := "DESC"
+	if filter.Order == "asc" {
+		order = "ASC"
+	}
+
+	// Select
+	selectQuery := fmt.Sprintf(`
+		SELECT DISTINCT u.id, u.email, u.is_banned, u.last_login_at, u.created_at, u.updated_at,
+		       p.display_name, p.avatar_key
+		%s %s
+		ORDER BY %s %s NULLS LAST
+		LIMIT $%d OFFSET $%d
+	`, baseQuery, whereClause, orderBy, order, argIndex, argIndex+1)
+
+	offset := (filter.Page - 1) * filter.Limit
+	args = append(args, filter.Limit, offset)
+
+	rows, err := r.db.QueryxContext(ctx, selectQuery, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list users: %w", err)
+	}
+	defer rows.Close()
+
+	users := []models.User{}
+	for rows.Next() {
+		var u models.User
+		var displayName string
+		var avatarKey *string
+
+		err := rows.Scan(&u.ID, &u.Email, &u.IsBanned, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt, &displayName, &avatarKey)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan user: %w", err)
+		}
+
+		// Note: Roles are not included in basic User model
+		// Use GetByID if you need full user with roles
+
+		users = append(users, u)
+	}
+
+	return users, total, nil
+}
+
+// BanUser блокирует пользователя
+func (r *UserRepository) BanUser(ctx context.Context, userID uuid.UUID, reason string) error {
+	query := `UPDATE users SET is_banned = true, updated_at = NOW() WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("failed to ban user: %w", err)
+	}
+	// TODO: Сохранить reason в отдельной таблице ban_history или в audit log
+	_ = reason
+	return nil
+}
+
+// UnbanUser разблокирует пользователя
+func (r *UserRepository) UnbanUser(ctx context.Context, userID uuid.UUID) error {
+	query := `UPDATE users SET is_banned = false, updated_at = NOW() WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("failed to unban user: %w", err)
+	}
+	return nil
+}
+
+// UpdateUserRoles обновляет роли пользователя
+func (r *UserRepository) UpdateUserRoles(ctx context.Context, userID uuid.UUID, roles []string) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Удаляем старые роли
+	_, err = tx.ExecContext(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("failed to delete old roles: %w", err)
+	}
+
+	// Добавляем новые роли
+	for _, role := range roles {
+		_, err = tx.ExecContext(ctx, `INSERT INTO user_roles (user_id, role) VALUES ($1, $2)`, userID, role)
+		if err != nil {
+			return fmt.Errorf("failed to add role: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}

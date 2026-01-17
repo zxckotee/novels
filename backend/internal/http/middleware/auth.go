@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"novels-backend/internal/config"
+	"novels-backend/internal/domain/models"
 	"novels-backend/internal/service"
 	"novels-backend/pkg/response"
 )
@@ -13,8 +14,9 @@ import (
 type contextKey string
 
 const (
-	UserIDKey   contextKey = "user_id"
-	UserRoleKey contextKey = "user_role"
+	UserIDKey    contextKey = "user_id"
+	UserRoleKey  contextKey = "user_role"
+	UserRolesKey contextKey = "user_roles"
 )
 
 // AuthMiddleware предоставляет middleware для аутентификации
@@ -59,7 +61,11 @@ func (m *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 
 		// Добавляем информацию о пользователе в контекст
 		ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID.String())
-		// Берем первую роль из списка (обычно одна роль)
+		
+		// Добавляем все роли в контекст
+		ctx = context.WithValue(ctx, UserRolesKey, claims.Roles)
+		
+		// Для обратной совместимости также добавляем первую роль
 		role := "user"
 		if len(claims.Roles) > 0 {
 			role = string(claims.Roles[0])
@@ -74,24 +80,43 @@ func (m *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 func (m *AuthMiddleware) RequireRole(roles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			userRole, ok := r.Context().Value(UserRoleKey).(string)
-			if !ok {
-				response.Error(w, http.StatusForbidden, "FORBIDDEN", "Access denied")
+			// Получаем все роли пользователя
+			userRolesVal := r.Context().Value(UserRolesKey)
+			
+			// Проверяем тип ролей
+			var userRoleStrings []string
+			switch v := userRolesVal.(type) {
+			case []models.UserRole:
+				for _, role := range v {
+					userRoleStrings = append(userRoleStrings, string(role))
+				}
+			case []string:
+				userRoleStrings = v
+			default:
+				response.Error(w, http.StatusForbidden, "FORBIDDEN", "Access denied - no roles found")
 				return
 			}
 
-			// Проверяем, есть ли роль пользователя в списке разрешенных
+			// Проверяем, есть ли хотя бы одна требуемая роль у пользователя
 			hasRole := false
-			for _, role := range roles {
-				if userRole == role {
+			for _, userRole := range userRoleStrings {
+				// Admin всегда имеет доступ
+				if userRole == "admin" {
 					hasRole = true
 					break
 				}
-			}
-
-			// Admin имеет доступ ко всему
-			if userRole == "admin" {
-				hasRole = true
+				
+				// Проверяем каждую требуемую роль
+				for _, requiredRole := range roles {
+					if userRole == requiredRole {
+						hasRole = true
+						break
+					}
+				}
+				
+				if hasRole {
+					break
+				}
 			}
 
 			if !hasRole {
@@ -135,6 +160,7 @@ func (m *AuthMiddleware) OptionalAuth(next http.Handler) http.Handler {
 				if claims, err := m.authService.ValidateToken(token); err == nil {
 					// Добавляем информацию о пользователе в контекст, если токен валиден
 					ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID.String())
+					ctx = context.WithValue(ctx, UserRolesKey, claims.Roles)
 					role := "user"
 					if len(claims.Roles) > 0 {
 						role = string(claims.Roles[0])

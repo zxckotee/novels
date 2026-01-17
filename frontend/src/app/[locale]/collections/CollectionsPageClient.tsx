@@ -5,40 +5,32 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/auth';
+
+function nextImageSrcFromApi(value: string): string | null {
+  const src = value.trim();
+  if (!src) return null;
+  if (src.startsWith('/') || src.startsWith('http://') || src.startsWith('https://')) return src;
+  return `/${src}`;
+}
 
 interface Collection {
   id: string;
   slug: string;
   title: string;
-  description: string;
-  coverUrl: string;
-  isPublic: boolean;
-  isFeatured: boolean;
+  description?: string;
+  coverUrl?: string;
   votesCount: number;
   itemsCount: number;
-  hasVoted: boolean;
-  user: {
+  hasVoted?: boolean;
+  user?: {
     id: string;
     displayName: string;
     avatarUrl: string;
   };
-  items: CollectionItem[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface CollectionItem {
-  novelId: string;
-  position: number;
-  note: string;
-  novel: {
-    id: string;
-    slug: string;
-    title: string;
-    coverUrl: string;
-    rating: number;
-  };
-  addedAt: string;
+  previewCovers?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface CollectionListResponse {
@@ -46,7 +38,10 @@ interface CollectionListResponse {
   total: number;
   page: number;
   limit: number;
+  totalPages?: number;
 }
+
+type ApiEnvelope<T> = { data: T };
 
 interface CollectionsPageClientProps {
   locale: string;
@@ -56,6 +51,7 @@ interface CollectionsPageClientProps {
 export default function CollectionsPageClient({ locale, searchParams }: CollectionsPageClientProps) {
   const t = useTranslations('community');
   const { user, isAuthenticated } = useAuth();
+  const accessToken = useAuthStore((s) => s.accessToken);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [featuredCollections, setFeaturedCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,8 +72,8 @@ export default function CollectionsPageClient({ locale, searchParams }: Collecti
     try {
       const response = await fetch('/api/v1/collections/featured?limit=6');
       if (response.ok) {
-        const data = await response.json();
-        setFeaturedCollections(data.collections || []);
+        const result: ApiEnvelope<{ collections: Collection[] }> = await response.json();
+        setFeaturedCollections(result.data.collections || []);
       }
     } catch (err) {
       console.error('Failed to load featured collections:', err);
@@ -97,9 +93,9 @@ export default function CollectionsPageClient({ locale, searchParams }: Collecti
       const response = await fetch(`/api/v1/collections?${params}`);
       if (!response.ok) throw new Error('Failed to load collections');
 
-      const data: CollectionListResponse = await response.json();
-      setCollections(data.collections || []);
-      setTotal(data.total);
+      const result: ApiEnvelope<CollectionListResponse> = await response.json();
+      setCollections(result.data.collections || []);
+      setTotal(result.data.total);
     } catch (err) {
       setError(t('loadError'));
     } finally {
@@ -114,18 +110,23 @@ export default function CollectionsPageClient({ locale, searchParams }: Collecti
     }
 
     try {
+      const headers: Record<string, string> = {};
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
       const response = await fetch(`/api/v1/collections/${collectionId}/vote`, {
         method: 'POST',
+        headers,
+        credentials: 'include',
       });
 
       if (response.ok) {
         // Обновляем локальное состояние
         setCollections(collections.map(c => {
           if (c.id === collectionId) {
+            const currentlyVoted = !!c.hasVoted;
             return {
               ...c,
-              hasVoted: !c.hasVoted,
-              votesCount: c.hasVoted ? c.votesCount - 1 : c.votesCount + 1,
+              hasVoted: !currentlyVoted,
+              votesCount: currentlyVoted ? Math.max(0, c.votesCount - 1) : c.votesCount + 1,
             };
           }
           return c;
@@ -294,35 +295,38 @@ function CollectionCard({
   featured?: boolean;
 }) {
   const t = useTranslations('community');
+  const coverSrc = collection.coverUrl ? nextImageSrcFromApi(collection.coverUrl) : null;
+  const previewCovers = (collection.previewCovers || []).map((c) => nextImageSrcFromApi(c)).filter(Boolean) as string[];
+  const authorName = collection.user?.displayName || '—';
+  const avatarSrc = collection.user?.avatarUrl ? nextImageSrcFromApi(collection.user.avatarUrl) : null;
+  const hasVoted = !!collection.hasVoted;
   
   return (
-    <Link href={`/${locale}/collections/${collection.slug}`}>
+    <Link href={`/${locale}/collections/${collection.id}`}>
       <div className={`bg-[#1a1a2e] rounded-xl overflow-hidden group hover:ring-2 hover:ring-purple-500 transition-all ${featured ? 'ring-1 ring-yellow-500/50' : ''}`}>
         {/* Обложка коллекции */}
         <div className="relative h-40 bg-gradient-to-br from-purple-900/50 to-blue-900/50">
-          {collection.coverUrl ? (
+          {coverSrc ? (
             <Image
-              src={collection.coverUrl}
+              src={coverSrc}
               alt={collection.title}
               fill
               className="object-cover"
             />
-          ) : collection.items.length > 0 ? (
+          ) : previewCovers.length > 0 ? (
             <div className="absolute inset-0 flex">
-              {collection.items.slice(0, 3).map((item, idx) => (
+              {previewCovers.slice(0, 3).map((src, idx) => (
                 <div
-                  key={item.novelId}
+                  key={src + idx}
                   className="relative flex-1"
                   style={{ zIndex: 3 - idx }}
                 >
-                  {item.novel.coverUrl && (
-                    <Image
-                      src={item.novel.coverUrl}
-                      alt={item.novel.title}
-                      fill
-                      className="object-cover opacity-60"
-                    />
-                  )}
+                  <Image
+                    src={src}
+                    alt=""
+                    fill
+                    className="object-cover opacity-60"
+                  />
                 </div>
               ))}
             </div>
@@ -334,11 +338,6 @@ function CollectionCard({
             {featured && (
               <span className="px-2 py-1 bg-yellow-500/90 text-black text-xs font-bold rounded">
                 ⭐ {t('featured')}
-              </span>
-            )}
-            {!collection.isPublic && (
-              <span className="px-2 py-1 bg-gray-800/90 text-gray-300 text-xs rounded">
-                🔒
               </span>
             )}
           </div>
@@ -365,21 +364,21 @@ function CollectionCard({
           {/* Автор и голоса */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {collection.user.avatarUrl ? (
+              {avatarSrc ? (
                 <Image
-                  src={collection.user.avatarUrl}
-                  alt={collection.user.displayName}
+                  src={avatarSrc}
+                  alt={authorName}
                   width={24}
                   height={24}
                   className="rounded-full"
                 />
               ) : (
                 <div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                  {collection.user.displayName[0]}
+                  {authorName[0]}
                 </div>
               )}
               <span className="text-sm text-gray-400">
-                {collection.user.displayName}
+                {authorName}
               </span>
             </div>
 
@@ -389,7 +388,7 @@ function CollectionCard({
                 onVote(collection.id);
               }}
               className={`flex items-center gap-1 px-3 py-1 rounded-full transition-colors ${
-                collection.hasVoted
+                hasVoted
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}

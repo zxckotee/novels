@@ -126,6 +126,14 @@ func (h *AdminHandler) DeleteNovel(w http.ResponseWriter, r *http.Request) {
 	response.OK(w, map[string]string{"message": "novel deleted"})
 }
 
+// ListChapters получает список всех глав (для админа)
+// GET /api/v1/admin/chapters
+func (h *AdminHandler) ListChapters(w http.ResponseWriter, r *http.Request) {
+	// Пока возвращаем пустой массив - для полной реализации нужно добавить метод ListAll в ChapterService
+	// который будет делать SELECT с JOIN на novels для получения названий
+	response.OK(w, []interface{}{})
+}
+
 // ========================
 // CHAPTERS CRUD
 // ========================

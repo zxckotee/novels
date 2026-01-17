@@ -52,6 +52,10 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 	collectionRepo := repository.NewCollectionRepository(db)
 	newsRepo := repository.NewNewsRepository(db)
 	wikiEditRepo := repository.NewWikiEditRepository(db)
+	authorRepo := repository.NewAuthorRepository(db)
+	genreRepo := repository.NewGenreRepository(db)
+	tagRepo := repository.NewTagRepository(db)
+	adminRepo := repository.NewAdminRepository(db)
 
 	// Инициализация сервисов
 	authService := service.NewAuthService(userRepo, cfg)
@@ -66,6 +70,10 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 	collectionService := service.NewCollectionService(collectionRepo, novelRepo, userRepo)
 	newsService := service.NewNewsService(newsRepo, userRepo)
 	wikiEditService := service.NewWikiEditService(wikiEditRepo, novelRepo, userRepo, subscriptionService)
+	authorService := service.NewAuthorService(authorRepo)
+	genreService := service.NewGenreService(genreRepo)
+	tagService := service.NewTagService(tagRepo)
+	adminService := service.NewAdminService(adminRepo)
 
 	// Инициализация обработчиков
 	authHandler := handlers.NewAuthHandler(authService)
@@ -80,6 +88,11 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 	collectionHandler := handlers.NewCollectionHandler(collectionService)
 	newsHandler := handlers.NewNewsHandler(newsService)
 	wikiEditHandler := handlers.NewWikiEditHandler(wikiEditService)
+	authorHandler := handlers.NewAuthorAdminHandler(authorService)
+	genreTagHandler := handlers.NewGenreTagAdminHandler(genreService, tagService)
+	userAdminHandler := handlers.NewUserAdminHandler(userRepo)
+	commentAdminHandler := handlers.NewCommentAdminHandler(commentRepo)
+	adminSystemHandler := handlers.NewAdminSystemHandler(adminService)
 
 	// Auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService, cfg.JWT)
@@ -251,6 +264,7 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 				r.Delete("/novels/{id}", adminHandler.DeleteNovel)
 
 				// Управление главами
+				r.Get("/chapters", adminHandler.ListChapters)
 				r.Post("/chapters", adminHandler.CreateChapter)
 				r.Put("/chapters/{id}", adminHandler.UpdateChapter)
 				r.Delete("/chapters/{id}", adminHandler.DeleteChapter)
@@ -280,6 +294,50 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 				r.Post("/news/{id}/pin", newsHandler.SetPinned)
 				r.Put("/news/{id}/localizations/{lang}", newsHandler.SetLocalization)
 				r.Delete("/news/{id}/localizations/{lang}", newsHandler.DeleteLocalization)
+
+				// Управление авторами
+				r.Get("/authors", authorHandler.ListAuthors)
+				r.Post("/authors", authorHandler.CreateAuthor)
+				r.Get("/authors/{id}", authorHandler.GetAuthor)
+				r.Put("/authors/{id}", authorHandler.UpdateAuthor)
+				r.Delete("/authors/{id}", authorHandler.DeleteAuthor)
+				r.Get("/novels/{id}/authors", authorHandler.GetNovelAuthors)
+				r.Put("/novels/{id}/authors", authorHandler.UpdateNovelAuthors)
+
+				// Управление жанрами
+				r.Get("/genres", genreTagHandler.ListGenres)
+				r.Post("/genres", genreTagHandler.CreateGenre)
+				r.Get("/genres/{id}", genreTagHandler.GetGenre)
+				r.Put("/genres/{id}", genreTagHandler.UpdateGenre)
+				r.Delete("/genres/{id}", genreTagHandler.DeleteGenre)
+
+				// Управление тегами
+				r.Get("/tags", genreTagHandler.ListTags)
+				r.Post("/tags", genreTagHandler.CreateTag)
+				r.Get("/tags/{id}", genreTagHandler.GetTag)
+				r.Put("/tags/{id}", genreTagHandler.UpdateTag)
+				r.Delete("/tags/{id}", genreTagHandler.DeleteTag)
+
+				// Управление пользователями
+				r.Get("/users", userAdminHandler.ListUsers)
+				r.Get("/users/{id}", userAdminHandler.GetUser)
+				r.Post("/users/{id}/ban", userAdminHandler.BanUser)
+				r.Post("/users/{id}/unban", userAdminHandler.UnbanUser)
+				r.Put("/users/{id}/roles", userAdminHandler.UpdateUserRoles)
+
+				// Управление комментариями и жалобами
+				r.Get("/comments", commentAdminHandler.ListComments)
+				r.Delete("/comments/{id}", commentAdminHandler.SoftDeleteComment)
+				r.Delete("/comments/{id}/hard", commentAdminHandler.HardDeleteComment)
+				r.Get("/reports", commentAdminHandler.ListReports)
+				r.Post("/reports/{id}/resolve", commentAdminHandler.ResolveReport)
+
+				// Системные функции
+				r.Get("/settings", adminSystemHandler.GetSettings)
+				r.Get("/settings/{key}", adminSystemHandler.GetSetting)
+				r.Put("/settings/{key}", adminSystemHandler.UpdateSetting)
+				r.Get("/logs", adminSystemHandler.GetLogs)
+				r.Get("/stats", adminSystemHandler.GetStats)
 			})
 		})
 	})

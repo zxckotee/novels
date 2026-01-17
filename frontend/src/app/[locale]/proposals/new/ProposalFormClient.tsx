@@ -89,7 +89,7 @@ export default function ProposalFormClient() {
     },
     onSuccess: (data) => {
       toast.success(t('newProposal.success'));
-      router.push(`/proposals/${data.id}`);
+      router.push(`/${locale}/voting`);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || t('newProposal.error'));
@@ -160,9 +160,9 @@ export default function ProposalFormClient() {
   if (!isAuthenticated) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-text-primary mb-4">{t('newProposal.loginRequired')}</h1>
-        <p className="text-text-secondary mb-8">{t('newProposal.loginMessage')}</p>
-        <Link href={`/${locale}/login`} className="px-6 py-3 bg-primary text-white rounded-lg">
+        <h1 className="text-2xl font-bold text-foreground-primary mb-4">{t('newProposal.loginRequired')}</h1>
+        <p className="text-foreground-secondary mb-8">{t('newProposal.loginMessage')}</p>
+        <Link href={`/${locale}/login`} className="btn-primary">
           {t('newProposal.login')}
         </Link>
       </div>
@@ -173,18 +173,18 @@ export default function ProposalFormClient() {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <div className="max-w-md mx-auto">
-          <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-20 h-20 bg-accent-warning/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-accent-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-text-primary mb-4">{t('newProposal.noTicket')}</h1>
-          <p className="text-text-secondary mb-8">{t('newProposal.noTicketMessage')}</p>
+          <h1 className="text-2xl font-bold text-foreground-primary mb-4">{t('newProposal.noTicket')}</h1>
+          <p className="text-foreground-secondary mb-8">{t('newProposal.noTicketMessage')}</p>
           <div className="flex gap-4 justify-center">
-            <Link href={`/${locale}/subscriptions`} className="px-6 py-3 bg-primary text-white rounded-lg">
+            <Link href={`/${locale}/subscriptions`} className="btn-primary">
               {t('newProposal.getPremium')}
             </Link>
-            <Link href={`/${locale}/voting`} className="px-6 py-3 bg-surface-elevated text-text-primary rounded-lg">
+            <Link href={`/${locale}/voting`} className="btn-secondary">
               {t('newProposal.backToVoting')}
             </Link>
           </div>
@@ -196,8 +196,8 @@ export default function ProposalFormClient() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-text-primary">{t('newProposal.title')}</h1>
-        <p className="text-text-secondary mt-2">{t('newProposal.subtitle')}</p>
+        <h1 className="text-3xl font-bold text-foreground-primary">{t('newProposal.title')}</h1>
+        <p className="text-foreground-secondary mt-2">{t('newProposal.subtitle')}</p>
       </div>
 
       {/* Progress Steps */}
@@ -207,8 +207,8 @@ export default function ProposalFormClient() {
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
                 step >= s
-                  ? 'bg-primary text-white'
-                  : 'bg-surface-elevated text-text-muted'
+                  ? 'bg-accent-primary text-white'
+                  : 'bg-background-secondary text-foreground-muted'
               }`}
             >
               {s}
@@ -216,7 +216,7 @@ export default function ProposalFormClient() {
             {s < 4 && (
               <div
                 className={`w-16 md:w-24 h-1 ${
-                  step > s ? 'bg-primary' : 'bg-surface-elevated'
+                  step > s ? 'bg-accent-primary' : 'bg-background-secondary'
                 }`}
               />
             )}
@@ -226,11 +226,11 @@ export default function ProposalFormClient() {
 
       {/* Step 1: Basic Info */}
       {step === 1 && (
-        <div className="bg-surface-elevated rounded-xl p-6 space-y-6">
-          <h2 className="text-xl font-semibold text-text-primary">{t('newProposal.step1Title')}</h2>
+        <div className="bg-background-secondary rounded-xl p-6 space-y-6">
+          <h2 className="text-xl font-semibold text-foreground-primary">{t('newProposal.step1Title')}</h2>
           
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">
               {t('newProposal.originalLink')} *
             </label>
             <input
@@ -238,13 +238,13 @@ export default function ProposalFormClient() {
               value={formData.originalLink}
               onChange={(e) => setFormData({ ...formData, originalLink: e.target.value })}
               placeholder="https://..."
-              className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:border-primary"
+              className="input w-full"
             />
-            <p className="text-xs text-text-muted mt-1">{t('newProposal.originalLinkHint')}</p>
+            <p className="text-xs text-foreground-muted mt-1">{t('newProposal.originalLinkHint')}</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">
               {t('newProposal.novelTitle')} *
             </label>
             <input
@@ -252,12 +252,12 @@ export default function ProposalFormClient() {
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder={t('newProposal.novelTitlePlaceholder')}
-              className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:border-primary"
+              className="input w-full"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">
               {t('newProposal.altTitles')}
             </label>
             <div className="flex gap-2 mb-2">
@@ -267,12 +267,12 @@ export default function ProposalFormClient() {
                 onChange={(e) => setAltTitleInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAltTitle())}
                 placeholder={t('newProposal.altTitlePlaceholder')}
-                className="flex-1 px-4 py-3 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:border-primary"
+                className="input flex-1"
               />
               <button
                 onClick={handleAddAltTitle}
                 disabled={!altTitleInput.trim() || formData.altTitles.length >= 5}
-                className="px-4 py-3 bg-primary text-white rounded-lg disabled:opacity-50"
+                className="btn-primary"
               >
                 {t('newProposal.add')}
               </button>
@@ -281,10 +281,10 @@ export default function ProposalFormClient() {
               {formData.altTitles.map((title, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 bg-surface rounded-full text-sm flex items-center gap-2"
+                  className="px-3 py-1 bg-background-tertiary rounded-full text-sm flex items-center gap-2"
                 >
                   {title}
-                  <button onClick={() => handleRemoveAltTitle(index)} className="text-text-muted hover:text-red-500">
+                  <button onClick={() => handleRemoveAltTitle(index)} className="text-foreground-muted hover:text-red-500">
                     ×
                   </button>
                 </span>
@@ -293,7 +293,7 @@ export default function ProposalFormClient() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">
               {t('newProposal.author')} *
             </label>
             <input
@@ -301,12 +301,12 @@ export default function ProposalFormClient() {
               value={formData.author}
               onChange={(e) => setFormData({ ...formData, author: e.target.value })}
               placeholder={t('newProposal.authorPlaceholder')}
-              className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:border-primary"
+              className="input w-full"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">
               {t('newProposal.coverUrl')}
             </label>
             <input
@@ -314,7 +314,7 @@ export default function ProposalFormClient() {
               value={formData.coverUrl}
               onChange={(e) => setFormData({ ...formData, coverUrl: e.target.value })}
               placeholder="https://..."
-              className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:border-primary"
+              className="input w-full"
             />
           </div>
 
@@ -322,7 +322,7 @@ export default function ProposalFormClient() {
             <button
               onClick={() => setStep(2)}
               disabled={!isStep1Valid}
-              className="px-6 py-3 bg-primary text-white rounded-lg disabled:opacity-50"
+              className="btn-primary"
             >
               {t('newProposal.next')}
             </button>
@@ -332,11 +332,11 @@ export default function ProposalFormClient() {
 
       {/* Step 2: Description */}
       {step === 2 && (
-        <div className="bg-surface-elevated rounded-xl p-6 space-y-6">
-          <h2 className="text-xl font-semibold text-text-primary">{t('newProposal.step2Title')}</h2>
+        <div className="bg-background-secondary rounded-xl p-6 space-y-6">
+          <h2 className="text-xl font-semibold text-foreground-primary">{t('newProposal.step2Title')}</h2>
           
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">
               {t('newProposal.description')} *
             </label>
             <textarea
@@ -344,9 +344,9 @@ export default function ProposalFormClient() {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder={t('newProposal.descriptionPlaceholder')}
               rows={8}
-              className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:border-primary resize-none"
+              className="input w-full resize-none"
             />
-            <p className={`text-xs mt-1 ${formData.description.length >= 100 ? 'text-green-500' : 'text-text-muted'}`}>
+            <p className={`text-xs mt-1 ${formData.description.length >= 100 ? 'text-status-success' : 'text-foreground-muted'}`}>
               {formData.description.length}/100 {t('newProposal.minChars')}
             </p>
           </div>
@@ -354,14 +354,14 @@ export default function ProposalFormClient() {
           <div className="flex justify-between">
             <button
               onClick={() => setStep(1)}
-              className="px-6 py-3 bg-surface text-text-primary rounded-lg"
+              className="btn-secondary"
             >
               {t('newProposal.back')}
             </button>
             <button
               onClick={() => setStep(3)}
               disabled={!isStep2Valid}
-              className="px-6 py-3 bg-primary text-white rounded-lg disabled:opacity-50"
+              className="btn-primary"
             >
               {t('newProposal.next')}
             </button>
@@ -371,11 +371,11 @@ export default function ProposalFormClient() {
 
       {/* Step 3: Genres & Tags */}
       {step === 3 && (
-        <div className="bg-surface-elevated rounded-xl p-6 space-y-6">
-          <h2 className="text-xl font-semibold text-text-primary">{t('newProposal.step3Title')}</h2>
+        <div className="bg-background-secondary rounded-xl p-6 space-y-6">
+          <h2 className="text-xl font-semibold text-foreground-primary">{t('newProposal.step3Title')}</h2>
           
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-3">
+            <label className="block text-sm font-medium text-foreground-secondary mb-3">
               {t('newProposal.genres')} * ({formData.genres.length}/5)
             </label>
             <div className="flex flex-wrap gap-2">
@@ -385,8 +385,8 @@ export default function ProposalFormClient() {
                   onClick={() => handleToggleGenre(genre)}
                   className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
                     formData.genres.includes(genre)
-                      ? 'bg-primary text-white'
-                      : 'bg-surface text-text-secondary hover:bg-surface-muted'
+                      ? 'bg-accent-primary text-white'
+                      : 'bg-background-tertiary text-foreground-secondary hover:bg-background-hover'
                   }`}
                 >
                   {t(`genres.${genre}`)}
@@ -396,7 +396,7 @@ export default function ProposalFormClient() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-3">
+            <label className="block text-sm font-medium text-foreground-secondary mb-3">
               {t('newProposal.tags')} ({formData.tags.length}/10)
             </label>
             <div className="flex flex-wrap gap-2">
@@ -406,8 +406,8 @@ export default function ProposalFormClient() {
                   onClick={() => handleToggleTag(tag)}
                   className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
                     formData.tags.includes(tag)
-                      ? 'bg-purple-500 text-white'
-                      : 'bg-surface text-text-secondary hover:bg-surface-muted'
+                      ? 'bg-accent-secondary text-white'
+                      : 'bg-background-tertiary text-foreground-secondary hover:bg-background-hover'
                   }`}
                 >
                   {t(`tags.${tag}`)}
@@ -419,14 +419,14 @@ export default function ProposalFormClient() {
           <div className="flex justify-between">
             <button
               onClick={() => setStep(2)}
-              className="px-6 py-3 bg-surface text-text-primary rounded-lg"
+              className="btn-secondary"
             >
               {t('newProposal.back')}
             </button>
             <button
               onClick={() => setStep(4)}
               disabled={!isStep3Valid}
-              className="px-6 py-3 bg-primary text-white rounded-lg disabled:opacity-50"
+              className="btn-primary"
             >
               {t('newProposal.next')}
             </button>
@@ -436,22 +436,22 @@ export default function ProposalFormClient() {
 
       {/* Step 4: Review */}
       {step === 4 && (
-        <div className="bg-surface-elevated rounded-xl p-6 space-y-6">
-          <h2 className="text-xl font-semibold text-text-primary">{t('newProposal.step4Title')}</h2>
+        <div className="bg-background-secondary rounded-xl p-6 space-y-6">
+          <h2 className="text-xl font-semibold text-foreground-primary">{t('newProposal.step4Title')}</h2>
           
           <div className="space-y-4">
             <div className="flex gap-4">
               {formData.coverUrl ? (
                 <img src={formData.coverUrl} alt="" className="w-24 h-32 object-cover rounded-lg" />
               ) : (
-                <div className="w-24 h-32 bg-surface rounded-lg flex items-center justify-center">
-                  <span className="text-text-muted text-xs">{t('newProposal.noCover')}</span>
+                <div className="w-24 h-32 bg-background-tertiary rounded-lg flex items-center justify-center">
+                  <span className="text-foreground-muted text-xs">{t('newProposal.noCover')}</span>
                 </div>
               )}
               <div>
-                <h3 className="text-lg font-semibold text-text-primary">{formData.title}</h3>
-                <p className="text-text-secondary">{formData.author}</p>
-                <a href={formData.originalLink} target="_blank" rel="noopener noreferrer" className="text-primary text-sm hover:underline">
+                <h3 className="text-lg font-semibold text-foreground-primary">{formData.title}</h3>
+                <p className="text-foreground-secondary">{formData.author}</p>
+                <a href={formData.originalLink} target="_blank" rel="noopener noreferrer" className="text-accent-primary text-sm hover:underline">
                   {t('newProposal.viewOriginal')}
                 </a>
               </div>
@@ -459,21 +459,21 @@ export default function ProposalFormClient() {
 
             {formData.altTitles.length > 0 && (
               <div>
-                <p className="text-sm text-text-muted">{t('newProposal.altTitles')}:</p>
-                <p className="text-text-secondary">{formData.altTitles.join(', ')}</p>
+                <p className="text-sm text-foreground-muted">{t('newProposal.altTitles')}:</p>
+                <p className="text-foreground-secondary">{formData.altTitles.join(', ')}</p>
               </div>
             )}
 
             <div>
-              <p className="text-sm text-text-muted">{t('newProposal.description')}:</p>
-              <p className="text-text-secondary line-clamp-4">{formData.description}</p>
+              <p className="text-sm text-foreground-muted">{t('newProposal.description')}:</p>
+              <p className="text-foreground-secondary line-clamp-4">{formData.description}</p>
             </div>
 
             <div>
-              <p className="text-sm text-text-muted mb-2">{t('newProposal.genres')}:</p>
+              <p className="text-sm text-foreground-muted mb-2">{t('newProposal.genres')}:</p>
               <div className="flex flex-wrap gap-2">
                 {formData.genres.map((genre) => (
-                  <span key={genre} className="px-2 py-1 bg-primary/20 text-primary rounded-full text-xs">
+                  <span key={genre} className="px-2 py-1 bg-accent-primary/20 text-accent-primary rounded-full text-xs">
                     {t(`genres.${genre}`)}
                   </span>
                 ))}
@@ -482,10 +482,10 @@ export default function ProposalFormClient() {
 
             {formData.tags.length > 0 && (
               <div>
-                <p className="text-sm text-text-muted mb-2">{t('newProposal.tags')}:</p>
+                <p className="text-sm text-foreground-muted mb-2">{t('newProposal.tags')}:</p>
                 <div className="flex flex-wrap gap-2">
                   {formData.tags.map((tag) => (
-                    <span key={tag} className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full text-xs">
+                    <span key={tag} className="px-2 py-1 bg-accent-secondary/20 text-accent-secondary rounded-full text-xs">
                       {t(`tags.${tag}`)}
                     </span>
                   ))}
@@ -494,8 +494,8 @@ export default function ProposalFormClient() {
             )}
           </div>
 
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-            <p className="text-sm text-yellow-500">
+          <div className="bg-accent-warning/10 border border-accent-warning/20 rounded-lg p-4">
+            <p className="text-sm text-accent-warning">
               {t('newProposal.ticketWarning')}
             </p>
           </div>
@@ -503,14 +503,14 @@ export default function ProposalFormClient() {
           <div className="flex justify-between">
             <button
               onClick={() => setStep(3)}
-              className="px-6 py-3 bg-surface text-text-primary rounded-lg"
+              className="btn-secondary"
             >
               {t('newProposal.back')}
             </button>
             <button
               onClick={handleSubmit}
               disabled={submitMutation.isPending}
-              className="px-6 py-3 bg-primary text-white rounded-lg disabled:opacity-50"
+              className="btn-primary"
             >
               {submitMutation.isPending ? t('newProposal.submitting') : t('newProposal.submit')}
             </button>

@@ -102,13 +102,21 @@ export interface User {
   email: string;
   displayName: string;
   avatarUrl?: string;
-  role: 'user' | 'premium' | 'moderator' | 'admin';
+  roles: string[]; // Array of roles
   level: number;
   xp: number;
   createdAt: string;
 }
 
-export interface UserProfile extends User {
+export interface UserProfile {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl?: string;
+  roles: string[];
+  level: number;
+  xp: number;
+  createdAt: string;
   bio?: string;
   readChaptersCount: number;
   readingTime: number;
@@ -144,6 +152,13 @@ export interface Comment {
   };
   userVote?: 1 | -1;
   replies?: Comment[];
+}
+
+export interface CommentsResponse {
+  comments: Comment[];
+  totalCount: number;
+  page: number;
+  limit: number;
 }
 
 // Bookmark types
@@ -221,4 +236,205 @@ export interface CollectionItem {
   position: number;
   addedAt: string;
   novel: NovelListItem;
+}
+
+// ============================================
+// ADMIN TYPES
+// ============================================
+
+// Author Admin Types
+export interface AuthorAdmin {
+  id: string;
+  slug: string;
+  name?: string;
+  bio?: string;
+  localizations?: {
+    [lang: string]: {
+      name: string;
+      bio?: string;
+    };
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAuthorRequest {
+  slug: string;
+  localizations: Array<{
+    lang: string;
+    name: string;
+    bio?: string;
+  }>;
+}
+
+export interface UpdateAuthorRequest {
+  slug?: string;
+  localizations?: Array<{
+    lang: string;
+    name: string;
+    bio?: string;
+  }>;
+}
+
+// Genre/Tag Admin Types
+export interface GenreAdmin {
+  id: string;
+  slug: string;
+  name?: string;
+  localizations?: {
+    [lang: string]: {
+      name: string;
+    };
+  };
+  createdAt: string;
+}
+
+export interface TagAdmin {
+  id: string;
+  slug: string;
+  name?: string;
+  localizations?: {
+    [lang: string]: {
+      name: string;
+    };
+  };
+  createdAt: string;
+}
+
+export interface CreateGenreRequest {
+  slug: string;
+  localizations: Array<{
+    lang: string;
+    name: string;
+  }>;
+}
+
+export interface CreateTagRequest {
+  slug: string;
+  localizations: Array<{
+    lang: string;
+    name: string;
+  }>;
+}
+
+// User Admin Types
+export interface UserAdmin extends User {
+  isBanned: boolean;
+  lastLoginAt?: string;
+}
+
+export interface BanUserRequest {
+  reason: string;
+}
+
+export interface UpdateUserRolesRequest {
+  roles: string[];
+}
+
+// Comment Admin Types
+export interface CommentReport {
+  id: string;
+  commentId: string;
+  userId: string;
+  reason: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  createdAt: string;
+  updatedAt: string;
+  comment?: Comment;
+  reporter?: {
+    id: string;
+    displayName: string;
+  };
+}
+
+export interface ResolveReportRequest {
+  action: 'resolve' | 'dismiss' | 'delete_comment';
+  reason?: string;
+}
+
+// Settings Admin Types
+export interface AppSetting {
+  key: string;
+  value: any;
+  description?: string;
+  updatedBy?: string;
+  updatedAt: string;
+}
+
+export interface UpdateSettingRequest {
+  value: any;
+}
+
+// Audit Log Types
+export interface AdminAuditLog {
+  id: string;
+  actorUserId: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  details?: any;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: string;
+  actorUser?: {
+    id: string;
+    displayName: string;
+  };
+}
+
+// Stats Types
+export interface AdminStats {
+  totalNovels: number;
+  totalChapters: number;
+  totalUsers: number;
+  totalComments: number;
+  pendingReports: number;
+  newUsersThisWeek: number;
+  newNovelsThisWeek: number;
+  newChaptersThisWeek: number;
+  avgChaptersPerDay: number;
+  avgCommentsPerDay: number;
+}
+
+// Admin Response Types
+export interface AuthorsResponse {
+  authors: AuthorAdmin[];
+  totalCount: number;
+  page: number;
+  limit: number;
+}
+
+export interface GenresResponse {
+  genres: GenreAdmin[];
+  totalCount: number;
+  page: number;
+  limit: number;
+}
+
+export interface TagsResponse {
+  tags: TagAdmin[];
+  totalCount: number;
+  page: number;
+  limit: number;
+}
+
+export interface UsersResponse {
+  users: UserAdmin[];
+  totalCount: number;
+  page: number;
+  limit: number;
+}
+
+export interface ReportsResponse {
+  reports: CommentReport[];
+  totalCount: number;
+  page: number;
+  limit: number;
+}
+
+export interface AuditLogsResponse {
+  logs: AdminAuditLog[];
+  totalCount: number;
+  page: number;
+  limit: number;
 }

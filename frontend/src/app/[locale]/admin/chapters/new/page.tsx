@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { ArrowLeft, Save } from 'lucide-react';
-import { useAuthStore, isModerator } from '@/store/auth';
+import { useAuthStore, isAdmin } from '@/store/auth';
 import api from '@/lib/api/client';
 
 interface ChapterFormData {
@@ -31,7 +31,7 @@ function NewChapterPageContent() {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuthStore();
+  const { isAuthenticated, user, isLoading } = useAuthStore();
   
   const [formData, setFormData] = useState<ChapterFormData>({
     ...initialFormData,
@@ -42,13 +42,17 @@ function NewChapterPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [isLoadingNovels, setIsLoadingNovels] = useState(true);
   
-  // Check admin access
-  if (!user || !isModerator(user)) {
-    if (typeof window !== 'undefined') {
-      router.push(`/${locale}`);
+  const hasAccess = isAuthenticated && isAdmin(user);
+
+  // Redirect must happen in an effect (not during render)
+  useEffect(() => {
+    if (!isLoading && !hasAccess) {
+      router.replace(`/${locale}`);
     }
-    return null;
-  }
+  }, [isLoading, hasAccess, router, locale]);
+
+  if (isLoading) return null;
+  if (!hasAccess) return null;
   
   // Load novels list
   useEffect(() => {
@@ -174,7 +178,7 @@ function NewChapterPageContent() {
                   type="text"
                   value={formData.title}
                   onChange={(e) => updateField('title', e.target.value)}
-                  className="input-primary w-full"
+                  className="input w-full"
                   placeholder="Глава 1. Начало"
                   required
                 />
@@ -188,7 +192,7 @@ function NewChapterPageContent() {
                 <textarea
                   value={formData.contentRu}
                   onChange={(e) => updateField('contentRu', e.target.value)}
-                  className="input-primary w-full font-mono text-sm resize-y"
+                  className="input w-full font-mono text-sm resize-y"
                   style={{ minHeight: '400px' }}
                   placeholder="Введите текст главы..."
                   required
@@ -206,7 +210,7 @@ function NewChapterPageContent() {
                 <textarea
                   value={formData.contentEn}
                   onChange={(e) => updateField('contentEn', e.target.value)}
-                  className="input-primary w-full font-mono text-sm resize-y"
+                  className="input w-full font-mono text-sm resize-y"
                   style={{ minHeight: '200px' }}
                   placeholder="Enter English translation..."
                 />
@@ -231,7 +235,7 @@ function NewChapterPageContent() {
                   <select
                     value={formData.novelId}
                     onChange={(e) => updateField('novelId', e.target.value)}
-                    className="input-primary w-full"
+                    className="input w-full"
                     required
                   >
                     <option value="">-- Выберите новеллу --</option>
@@ -253,7 +257,7 @@ function NewChapterPageContent() {
                   type="number"
                   value={formData.number}
                   onChange={(e) => updateField('number', parseInt(e.target.value) || 1)}
-                  className="input-primary w-full"
+                  className="input w-full"
                   min="1"
                 />
               </div>

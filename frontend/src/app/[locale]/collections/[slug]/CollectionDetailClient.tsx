@@ -6,6 +6,16 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/auth';
+
+function nextImageSrcFromApi(value: string): string | null {
+  const src = value.trim();
+  if (!src) return null;
+  if (src.startsWith('/') || src.startsWith('http://') || src.startsWith('https://')) return src;
+  return `/${src}`;
+}
+
+type ApiEnvelope<T> = { data: T };
 
 interface Collection {
   id: string;
@@ -28,11 +38,38 @@ interface Collection {
   updatedAt: string;
 }
 
+interface ApiCollection {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string;
+  coverUrl?: string;
+  isPublic: boolean;
+  isFeatured: boolean;
+  votesCount: number;
+  itemsCount: number;
+  userVote?: number;
+  user?: {
+    id: string;
+    displayName: string;
+    avatarUrl?: string | null;
+  };
+  items?: CollectionItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface CollectionItem {
   novelId: string;
   position: number;
   note: string;
-  novel: {
+  novelSlug?: string;
+  novelTitle?: string;
+  novelCoverUrl?: string | null;
+  novelRating?: number;
+  novelDescription?: string | null;
+  novelTranslationStatus?: string;
+  novel?: {
     id: string;
     slug: string;
     title: string;
@@ -53,6 +90,7 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
   const t = useTranslations('community');
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const accessToken = useAuthStore((s) => s.accessToken);
   const [collection, setCollection] = useState<Collection | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +110,13 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/v1/collections/${slug}`);
+      const headers: Record<string, string> = {};
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+      const response = await fetch(`/api/v1/collections/${slug}`, {
+        headers,
+        credentials: 'include',
+      });
       if (!response.ok) {
         if (response.status === 404) {
           setError(t('collectionNotFound'));
@@ -81,8 +125,29 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
         }
         return;
       }
-      const data = await response.json();
-      setCollection(data);
+      const result: ApiEnvelope<ApiCollection> = await response.json();
+      const apiCol = result.data;
+
+      setCollection({
+        id: apiCol.id,
+        slug: apiCol.slug,
+        title: apiCol.title,
+        description: apiCol.description || '',
+        coverUrl: apiCol.coverUrl || '',
+        isPublic: apiCol.isPublic,
+        isFeatured: apiCol.isFeatured,
+        votesCount: apiCol.votesCount,
+        itemsCount: apiCol.itemsCount,
+        hasVoted: apiCol.userVote === 1,
+        user: {
+          id: apiCol.user?.id || '',
+          displayName: apiCol.user?.displayName || '',
+          avatarUrl: apiCol.user?.avatarUrl || '',
+        },
+        items: apiCol.items || [],
+        createdAt: apiCol.createdAt,
+        updatedAt: apiCol.updatedAt,
+      });
     } catch (err) {
       setError(t('loadError'));
     } finally {
@@ -95,21 +160,34 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
       alert(t('loginRequired'));
       return;
     }
+    if (isOwner) {
+      alert('Нельзя голосовать за свою коллекцию');
+      return;
+    }
 
     try {
+      const headers: Record<string, string> = {};
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
       const response = await fetch(`/api/v1/collections/${collection.id}/vote`, {
         method: 'POST',
+        headers,
+        credentials: 'include',
       });
 
-      if (response.ok) {
-        setCollection({
-          ...collection,
-          hasVoted: !collection.hasVoted,
-          votesCount: collection.hasVoted ? collection.votesCount - 1 : collection.votesCount + 1,
-        });
+      if (!response.ok) {
+        const errData: any = await response.json().catch(() => ({}));
+        const msg = errData?.error?.message || errData?.message || 'Failed to vote';
+        throw new Error(msg);
       }
+
+      setCollection({
+        ...collection,
+        hasVoted: !collection.hasVoted,
+        votesCount: collection.hasVoted ? collection.votesCount - 1 : collection.votesCount + 1,
+      });
     } catch (err) {
       console.error('Vote error:', err);
+      alert(err instanceof Error ? err.message : 'Не удалось проголосовать');
     }
   };
 
@@ -117,8 +195,12 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
     if (!collection || !confirm(t('confirmDeleteCollection'))) return;
 
     try {
+      const headers: Record<string, string> = {};
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
       const response = await fetch(`/api/v1/collections/${collection.id}`, {
         method: 'DELETE',
+        headers,
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -157,9 +239,9 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
       <div className="relative">
         {/* Фон */}
         <div className="absolute inset-0 h-80 overflow-hidden">
-          {collection.coverUrl ? (
+          {collection.coverUrl && nextImageSrcFromApi(collection.coverUrl) ? (
             <Image
-              src={collection.coverUrl}
+              src={nextImageSrcFromApi(collection.coverUrl)!}
               alt=""
               fill
               className="object-cover blur-xl opacity-30"
@@ -174,9 +256,9 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
           <div className="flex flex-col md:flex-row gap-8">
             {/* Обложка */}
             <div className="w-48 h-64 flex-shrink-0 rounded-xl overflow-hidden shadow-2xl">
-              {collection.coverUrl ? (
+              {collection.coverUrl && nextImageSrcFromApi(collection.coverUrl) ? (
                 <Image
-                  src={collection.coverUrl}
+                  src={nextImageSrcFromApi(collection.coverUrl)!}
                   alt={collection.title}
                   width={192}
                   height={256}
@@ -219,9 +301,9 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
                 href={`/${locale}/users/${collection.user.id}`}
                 className="inline-flex items-center gap-2 mb-6 hover:opacity-80"
               >
-                {collection.user.avatarUrl ? (
+                {collection.user.avatarUrl && nextImageSrcFromApi(collection.user.avatarUrl) ? (
                   <Image
-                    src={collection.user.avatarUrl}
+                    src={nextImageSrcFromApi(collection.user.avatarUrl)!}
                     alt={collection.user.displayName}
                     width={32}
                     height={32}
@@ -229,7 +311,7 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
                   />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold">
-                    {collection.user.displayName[0]}
+                    {(collection.user.displayName || '?')[0]}
                   </div>
                 )}
                 <span className="text-gray-300">{collection.user.displayName}</span>
@@ -260,12 +342,6 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
 
                 {isOwner && (
                   <>
-                    <Link
-                      href={`/${locale}/collections/${collection.slug}/edit`}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-                    >
-                      {t('edit')}
-                    </Link>
                     <button
                       onClick={handleDelete}
                       className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
@@ -292,85 +368,108 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
           </div>
         ) : (
           <div className="space-y-4">
-            {collection.items.map((item, index) => (
-              <div
-                key={item.novelId}
-                className="flex gap-4 bg-[#1a1a2e] rounded-xl p-4 hover:bg-[#252540] transition-colors"
-              >
-                {/* Номер позиции */}
-                <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-gray-700 rounded-full text-gray-300 font-bold">
-                  {index + 1}
-                </div>
+            {collection.items.map((item, index) => {
+              const novelSlug = item.novel?.slug || item.novelSlug || '';
+              const novelHref = novelSlug ? `/${locale}/novel/${novelSlug}` : null;
+              const novelTitle = item.novel?.title || item.novelTitle || item.novelId;
+              const novelDescription = item.novel?.description ?? item.novelDescription ?? '';
+              const novelCoverUrl = item.novel?.coverUrl || item.novelCoverUrl || '';
+              const novelCoverSrc = novelCoverUrl ? nextImageSrcFromApi(novelCoverUrl) : null;
+              const novelRating = item.novel?.rating ?? item.novelRating ?? 0;
+              const novelTranslationStatus = item.novel?.translationStatus || item.novelTranslationStatus || '';
 
-                {/* Обложка новеллы */}
-                <Link href={`/${locale}/novel/${item.novel.slug}`} className="flex-shrink-0">
-                  <div className="w-20 h-28 rounded-lg overflow-hidden">
-                    {item.novel.coverUrl ? (
-                      <Image
-                        src={item.novel.coverUrl}
-                        alt={item.novel.title}
-                        width={80}
-                        height={112}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                        <span className="text-2xl">📖</span>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-
-                {/* Информация о новелле */}
-                <div className="flex-1 min-w-0">
-                  <Link
-                    href={`/${locale}/novel/${item.novel.slug}`}
-                    className="text-lg font-bold text-white hover:text-purple-400 transition-colors line-clamp-1"
-                  >
-                    {item.novel.title}
-                  </Link>
-
-                  {item.novel.description && (
-                    <p className="text-gray-400 text-sm mt-1 line-clamp-2">
-                      {item.novel.description}
-                    </p>
-                  )}
-
-                  {item.note && (
-                    <div className="mt-2 p-2 bg-[#121212] rounded-lg">
-                      <p className="text-sm text-gray-300 italic">"{item.note}"</p>
+              const Cover = (
+                <div className="w-20 h-28 rounded-lg overflow-hidden">
+                  {novelCoverSrc ? (
+                    <Image
+                      src={novelCoverSrc}
+                      alt={novelTitle}
+                      width={80}
+                      height={112}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                      <span className="text-2xl">📖</span>
                     </div>
                   )}
-
-                  <div className="flex items-center gap-4 mt-2">
-                    {item.novel.rating > 0 && (
-                      <span className="text-yellow-500 text-sm">
-                        ⭐ {item.novel.rating.toFixed(1)}
-                      </span>
-                    )}
-                    {item.novel.translationStatus && (
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        item.novel.translationStatus === 'completed'
-                          ? 'bg-green-900/50 text-green-400'
-                          : item.novel.translationStatus === 'ongoing'
-                          ? 'bg-blue-900/50 text-blue-400'
-                          : 'bg-gray-700 text-gray-400'
-                      }`}>
-                        {t(`status.${item.novel.translationStatus}`)}
-                      </span>
-                    )}
-                  </div>
                 </div>
+              );
 
-                {/* Кнопка читать */}
-                <Link
-                  href={`/${locale}/novel/${item.novel.slug}`}
-                  className="flex-shrink-0 self-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+              return (
+                <div
+                  key={item.novelId}
+                  className="flex gap-4 bg-[#1a1a2e] rounded-xl p-4 hover:bg-[#252540] transition-colors"
                 >
-                  {t('read')}
-                </Link>
-              </div>
-            ))}
+                  {/* Номер позиции */}
+                  <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-gray-700 rounded-full text-gray-300 font-bold">
+                    {index + 1}
+                  </div>
+
+                  {/* Обложка новеллы */}
+                  {novelHref ? (
+                    <Link href={novelHref} className="flex-shrink-0">
+                      {Cover}
+                    </Link>
+                  ) : (
+                    <div className="flex-shrink-0">{Cover}</div>
+                  )}
+
+                  {/* Информация о новелле */}
+                  <div className="flex-1 min-w-0">
+                    {novelHref ? (
+                      <Link
+                        href={novelHref}
+                        className="text-lg font-bold text-white hover:text-purple-400 transition-colors line-clamp-1"
+                      >
+                        {novelTitle}
+                      </Link>
+                    ) : (
+                      <div className="text-lg font-bold text-white line-clamp-1">{novelTitle}</div>
+                    )}
+
+                    {novelDescription && (
+                      <p className="text-gray-400 text-sm mt-1 line-clamp-2">{novelDescription}</p>
+                    )}
+
+                    {item.note && (
+                      <div className="mt-2 p-2 bg-[#121212] rounded-lg">
+                        <p className="text-sm text-gray-300 italic">"{item.note}"</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4 mt-2">
+                      {novelRating > 0 && (
+                        <span className="text-yellow-500 text-sm">⭐ {Number(novelRating).toFixed(1)}</span>
+                      )}
+                      {novelTranslationStatus && (
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded ${
+                            novelTranslationStatus === 'completed'
+                              ? 'bg-green-900/50 text-green-400'
+                              : novelTranslationStatus === 'ongoing'
+                                ? 'bg-blue-900/50 text-blue-400'
+                                : 'bg-gray-700 text-gray-400'
+                          }`}
+                        >
+                          {t(`status.${novelTranslationStatus}`)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Кнопка читать */}
+                  {novelHref ? (
+                    <Link
+                      href={novelHref}
+                      className="flex-shrink-0 self-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    >
+                      {t('read')}
+                    </Link>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

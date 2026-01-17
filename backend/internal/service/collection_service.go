@@ -350,13 +350,13 @@ func (s *CollectionService) Vote(ctx context.Context, collectionID, userID uuid.
 		return err
 	}
 	if collection == nil {
-		return fmt.Errorf("collection not found")
+		return ErrNotFound
 	}
 	if !collection.IsPublic {
-		return fmt.Errorf("cannot vote on private collection")
+		return ErrInvalidAction
 	}
 	if collection.UserID == userID {
-		return fmt.Errorf("cannot vote on own collection")
+		return ErrNotAuthorized
 	}
 
 	// Check if already voted

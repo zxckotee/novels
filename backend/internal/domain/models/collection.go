@@ -37,6 +37,14 @@ type CollectionItem struct {
 	Note         string    `json:"note,omitempty" db:"note"`
 	AddedAt      time.Time `json:"addedAt" db:"added_at"`
 
+	// Denormalized novel fields for UI (so clients can render without extra requests)
+	NovelSlug              string  `json:"novelSlug,omitempty" db:"novel_slug"`
+	NovelTitle             string  `json:"novelTitle,omitempty" db:"novel_title"`
+	NovelCoverURL          *string `json:"novelCoverUrl,omitempty" db:"novel_cover_url"`
+	NovelRating            float64 `json:"novelRating,omitempty" db:"novel_rating"`
+	NovelDescription       *string `json:"novelDescription,omitempty" db:"novel_description"`
+	NovelTranslationStatus string  `json:"novelTranslationStatus,omitempty" db:"novel_translation_status"`
+
 	// Relations
 	Novel *NovelCard `json:"novel,omitempty"`
 }
