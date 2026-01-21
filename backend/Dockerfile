@@ -41,8 +41,12 @@ RUN apk add --no-cache ca-certificates tzdata
 COPY --from=builder /app/server .
 COPY --from=builder /app/internal/database/migrations ./migrations
 
+# Uploads directory (for serving /uploads and storing uploaded files)
+RUN adduser -D -g '' appuser && mkdir -p /app/uploads && chown -R appuser:appuser /app/uploads
+
+ENV UPLOAD_DIR=/app/uploads
+
 # Create non-root user
-RUN adduser -D -g '' appuser
 USER appuser
 
 # Expose port

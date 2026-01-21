@@ -128,6 +128,7 @@ export default function ProfilePageClient() {
                   src={profile.avatarUrl}
                   alt={profile.displayName}
                   fill
+                  sizes="(max-width: 768px) 96px, 128px"
                   className="object-cover"
                 />
               ) : (

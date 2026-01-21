@@ -70,7 +70,7 @@ export function NovelCard({ novel, showRating = true, showChapter = true }: Nove
         )}
 
         {/* Rating */}
-        {showRating && novel.rating && (
+        {showRating && typeof novel.rating === 'number' && novel.rating > 0 && (
           <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm rounded-tag px-1.5 py-0.5">
             <Star className="w-3 h-3 text-accent-warning fill-current" />
             <span className="text-xs font-medium">{novel.rating.toFixed(1)}</span>
@@ -80,7 +80,7 @@ export function NovelCard({ novel, showRating = true, showChapter = true }: Nove
         {/* Bottom Info */}
         <div className="absolute bottom-0 left-0 right-0 p-3">
           {/* Latest Chapter */}
-          {showChapter && novel.latestChapter && (
+          {showChapter && typeof novel.latestChapter === 'number' && novel.latestChapter > 0 && (
             <div className="flex items-center justify-between text-xs text-foreground-secondary mb-1">
               <span>Глава {novel.latestChapter}</span>
               {novel.updatedAt && (

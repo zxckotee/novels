@@ -42,11 +42,11 @@ export default function AdminModerationPage() {
   const locale = useLocale();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { isAuthenticated, user, isLoading } = useAuthStore();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>('proposals');
   
   // Fetch proposals pending moderation
-  const { data: pendingProposals, isLoading } = useQuery<Proposal[]>({
+  const { data: pendingProposals, isLoading: pendingProposalsLoading } = useQuery<Proposal[]>({
     queryKey: ['pending-proposals'],
     queryFn: async () => {
       const response = await api.get('/moderation/proposals');
@@ -70,6 +70,10 @@ export default function AdminModerationPage() {
     onSuccess: (_, variables) => {
       toast.success(variables.action === 'approve' ? 'Предложение одобрено' : 'Предложение отклонено');
       queryClient.invalidateQueries({ queryKey: ['pending-proposals'] });
+      // Keep public pages in sync (react-query cache has 60s staleTime).
+      queryClient.invalidateQueries({ queryKey: ['voting-leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['voting-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
     },
     onError: () => {
       toast.error('Ошибка модерации');
@@ -78,13 +82,13 @@ export default function AdminModerationPage() {
   
   // Check admin access with useEffect
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || !isModerator(user))) {
+    if (!authLoading && (!isAuthenticated || !isModerator(user))) {
       router.push(`/${locale}`);
     }
-  }, [isLoading, isAuthenticated, user, router, locale]);
+  }, [authLoading, isAuthenticated, user, router, locale]);
   
   // Don't render if not authorized
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="container-custom py-12 text-center">
         <p className="text-foreground-muted">Загрузка...</p>
@@ -203,7 +207,7 @@ export default function AdminModerationPage() {
         {/* Proposals Tab */}
         {activeTab === 'proposals' && (
           <div>
-            {isLoading ? (
+            {pendingProposalsLoading ? (
               <div className="text-center py-12">
                 <div className="animate-spin w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full mx-auto" />
               </div>

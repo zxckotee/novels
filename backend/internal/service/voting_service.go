@@ -57,7 +57,8 @@ func (s *VotingService) CreateProposal(ctx context.Context, userID uuid.UUID, re
 		ID:           uuid.New(),
 		UserID:       userID,
 		OriginalLink: req.OriginalLink,
-		Status:       models.ProposalStatusDraft,
+		// UI submits a completed proposal; it should go straight to moderation.
+		Status:       models.ProposalStatusModeration,
 		Title:        req.Title,
 		AltTitles:    req.AltTitles,
 		Author:       req.Author,

@@ -94,10 +94,19 @@ func (r *TicketRepository) CreateTransaction(ctx context.Context, tx models.Tick
 	if tx.CreatedAt.IsZero() {
 		tx.CreatedAt = time.Now()
 	}
+
+	// IMPORTANT: empty string is not NULL in Postgres and will collide under the UNIQUE constraint.
+	// Treat empty idempotency keys as NULL so the key is truly "optional".
+	var idempotencyKey any
+	if tx.IdempotencyKey != "" {
+		idempotencyKey = tx.IdempotencyKey
+	} else {
+		idempotencyKey = nil
+	}
 	
 	_, err := r.db.ExecContext(ctx, query,
 		tx.ID, tx.UserID, tx.Type, tx.Delta, tx.Reason,
-		tx.RefType, tx.RefID, tx.IdempotencyKey, tx.CreatedAt,
+		tx.RefType, tx.RefID, idempotencyKey, tx.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("create transaction: %w", err)
@@ -119,10 +128,19 @@ func (r *TicketRepository) CreateTransactionTx(ctx context.Context, dbTx *sqlx.T
 	if tx.CreatedAt.IsZero() {
 		tx.CreatedAt = time.Now()
 	}
+
+	// IMPORTANT: empty string is not NULL in Postgres and will collide under the UNIQUE constraint.
+	// Treat empty idempotency keys as NULL so the key is truly "optional".
+	var idempotencyKey any
+	if tx.IdempotencyKey != "" {
+		idempotencyKey = tx.IdempotencyKey
+	} else {
+		idempotencyKey = nil
+	}
 	
 	_, err := dbTx.ExecContext(ctx, query,
 		tx.ID, tx.UserID, tx.Type, tx.Delta, tx.Reason,
-		tx.RefType, tx.RefID, tx.IdempotencyKey, tx.CreatedAt,
+		tx.RefType, tx.RefID, idempotencyKey, tx.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("create transaction tx: %w", err)

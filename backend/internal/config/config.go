@@ -14,6 +14,7 @@ type Config struct {
 	Redis    RedisConfig
 	JWT      JWTConfig
 	CORS     CORSConfig
+	UploadsDir string
 }
 
 type ServerConfig struct {
@@ -74,6 +75,7 @@ func Load() *Config {
 		CORS: CORSConfig{
 			AllowedOrigins: getSliceEnv("CORS_ORIGINS", []string{"http://localhost:3000"}),
 		},
+		UploadsDir: getEnv("UPLOAD_DIR", "./uploads"),
 	}
 }
 

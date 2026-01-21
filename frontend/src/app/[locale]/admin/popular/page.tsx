@@ -9,6 +9,26 @@ import { useAuthStore, isAdmin } from '@/store/auth';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api/client';
 
+type BackendNovelListItem = {
+  id: string;
+  slug: string;
+  title: string;
+  rating?: number;
+  rating_count?: number;
+  views_total?: number;
+  bookmarks_count?: number;
+};
+
+type BackendNovelListResponse = {
+  novels: BackendNovelListItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
 export default function AdminPopularPage() {
   const locale = useLocale();
   const router = useRouter();
@@ -24,9 +44,10 @@ export default function AdminPopularPage() {
   const { data: novelsData, isLoading } = useQuery({
     queryKey: ['novels', activeTab, locale],
     queryFn: async () => {
-      const sort = activeTab === 'trending' ? 'views' : activeTab === 'top-rated' ? 'rating' : 'bookmarks';
-      const { data } = await api.get(`/novels?sort=${sort}&limit=20&lang=${locale}`);
-      return Array.isArray(data) ? data : [];
+      const sort =
+        activeTab === 'trending' ? 'views_total' : activeTab === 'top-rated' ? 'rating' : 'bookmarks_count';
+      const res = await api.get<BackendNovelListResponse>(`/novels?sort=${sort}&limit=20&lang=${locale}`);
+      return res.data?.novels || [];
     },
   });
 
@@ -103,11 +124,11 @@ export default function AdminPopularPage() {
                       <div className="flex items-center gap-1">
                         <Star className="w-4 h-4 text-accent-primary fill-accent-primary" />
                         <span>{novel.rating?.toFixed(1) || '—'}</span>
-                        <span className="text-xs text-foreground-muted">({novel.ratingsCount || 0})</span>
+                        <span className="text-xs text-foreground-muted">({novel.rating_count || 0})</span>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-foreground-secondary">{novel.viewsCount?.toLocaleString('ru-RU') || 0}</td>
-                    <td className="py-3 px-4 text-foreground-secondary">{novel.bookmarksCount?.toLocaleString('ru-RU') || 0}</td>
+                    <td className="py-3 px-4 text-foreground-secondary">{novel.views_total?.toLocaleString('ru-RU') || 0}</td>
+                    <td className="py-3 px-4 text-foreground-secondary">{novel.bookmarks_count?.toLocaleString('ru-RU') || 0}</td>
                     <td className="py-3 px-4">
                       <Link href={`/${locale}/admin/novels/${novel.slug}`} className="btn-ghost p-2" title="Управление">
                         <Plus className="w-4 h-4" />

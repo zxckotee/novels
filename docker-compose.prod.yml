@@ -42,6 +42,7 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://novels.example.com}
       BASE_URL: ${API_BASE_URL:-https://api.novels.example.com}
+      UPLOAD_DIR: /app/uploads
     ports:
       - "8080:8080"
     healthcheck:
@@ -68,6 +69,8 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.novels.example.com}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://novels.example.com}
+      # Used by Next.js server-side rewrites and next/image inside Docker network
+      INTERNAL_API_URL: http://api:8080
     ports:
       - "3000:3000"
     healthcheck:

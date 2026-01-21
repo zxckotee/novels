@@ -390,14 +390,24 @@ func (s *NovelService) IncrementViews(ctx context.Context, novelID uuid.UUID) er
 
 // GetAllGenres получает все жанры
 func (s *NovelService) GetAllGenres(ctx context.Context, lang string) ([]models.Genre, error) {
-	// TODO: Реализовать метод GetAllGenres в репозитории
-	// Пока возвращаем пустой список
-	return []models.Genre{}, nil
+	if lang == "" {
+		lang = "ru"
+	}
+	genres, err := s.novelRepo.ListAllGenres(ctx, lang)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list genres: %w", err)
+	}
+	return genres, nil
 }
 
 // GetAllTags получает все теги
 func (s *NovelService) GetAllTags(ctx context.Context, lang string) ([]models.Tag, error) {
-	// TODO: Реализовать метод GetAllTags в репозитории
-	// Пока возвращаем пустой список
-	return []models.Tag{}, nil
+	if lang == "" {
+		lang = "ru"
+	}
+	tags, err := s.novelRepo.ListAllTags(ctx, lang)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tags: %w", err)
+	}
+	return tags, nil
 }

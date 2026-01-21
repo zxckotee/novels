@@ -79,7 +79,7 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 	authHandler := handlers.NewAuthHandler(authService)
 	novelHandler := handlers.NewNovelHandler(novelService)
 	chapterHandler := handlers.NewChapterHandler(chapterService)
-	adminHandler := handlers.NewAdminHandler(novelService, chapterService, "./uploads")
+	adminHandler := handlers.NewAdminHandler(novelService, chapterService, cfg.UploadsDir)
 	commentHandler := handlers.NewCommentHandler(commentService)
 	bookmarkHandler := handlers.NewBookmarkHandler(bookmarkService)
 	walletHandler := handlers.NewWalletHandler(ticketService, log)
@@ -118,7 +118,13 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 
 			// Каталог новелл
 			r.Get("/novels", novelHandler.List)
+			r.Get("/novels/search", novelHandler.Search)
 			r.Get("/novels/{slug}", novelHandler.GetBySlug)
+			r.Get("/novels/popular", novelHandler.GetPopular)
+			r.Get("/novels/latest", novelHandler.GetLatestUpdates)
+			r.Get("/novels/new", novelHandler.GetNewReleases)
+			r.Get("/novels/trending", novelHandler.GetTrending)
+			r.Get("/novels/top-rated", novelHandler.GetTopRated)
 			r.Get("/novels/{slug}/chapters", chapterHandler.ListByNovel)
 			
 			// Главы
@@ -343,7 +349,7 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 	})
 
 	// Статические файлы (загруженные изображения)
-	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadsDir))))
 
 	return r
 }

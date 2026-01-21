@@ -289,6 +289,7 @@ function NewsCard({
                 src={post.coverUrl}
                 alt={post.title}
                 fill
+                sizes="(max-width: 768px) 100vw, 192px"
                 className="object-cover"
               />
             </div>

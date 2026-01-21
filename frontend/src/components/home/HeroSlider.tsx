@@ -6,51 +6,29 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
 import { useLocale } from 'next-intl';
 
-interface SlideItem {
+export interface HeroSlideItem {
   id: string;
   slug: string;
   title: string;
-  description: string;
-  coverUrl: string;
-  latestChapter?: number;
+  description?: string;
+  coverUrl?: string;
 }
 
-export function HeroSlider() {
+export function HeroSlider({ slides, isLoading }: { slides: HeroSlideItem[]; isLoading?: boolean }) {
   const locale = useLocale();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
-
-  // Mock data - TODO: fetch from API
-  const slides: SlideItem[] = [
-    {
-      id: '1',
-      slug: 'the-beginning-after-the-end',
-      title: 'Начало после конца',
-      description: 'Король Грей обладает непревзойденной силой и престижем. Однако одиночество следует за теми, кто обладает большой властью...',
-      coverUrl: '/placeholder-hero-1.svg',
-      latestChapter: 450,
-    },
-    {
-      id: '2',
-      slug: 'solo-leveling',
-      title: 'Поднятие уровня в одиночку',
-      description: 'В мире, где пробудились охотники, обладающие магическими способностями, Сон Джин-ву — слабейший среди них...',
-      coverUrl: '/placeholder-hero-2.svg',
-      latestChapter: 270,
-    },
-    {
-      id: '3',
-      slug: 'omniscient-readers-viewpoint',
-      title: 'Точка зрения всеведущего читателя',
-      description: 'Единственный читатель, закончивший роман "Три способа выжить в разрушенном мире", Ким Доккджа...',
-      coverUrl: '/placeholder-hero-3.svg',
-      latestChapter: 551,
-    },
-  ];
+  
+  // Keep index in bounds when slides load/change
+  useEffect(() => {
+    if (slides.length === 0) return;
+    setCurrentSlide((s) => Math.min(s, slides.length - 1));
+  }, [slides.length]);
 
   // Autoplay
   useEffect(() => {
     if (!isAutoPlay) return;
+    if (slides.length <= 1) return;
     
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -68,6 +46,38 @@ export function HeroSlider() {
   const nextSlide = () => goToSlide((currentSlide + 1) % slides.length);
   const prevSlide = () => goToSlide((currentSlide - 1 + slides.length) % slides.length);
 
+  if (isLoading) {
+    return (
+      <div className="relative h-[400px] md:h-[500px] overflow-hidden bg-background-primary">
+        <div className="container-custom h-full flex items-center">
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center animate-pulse">
+            <div className="order-2 md:order-1">
+              <div className="h-10 bg-background-hover rounded w-3/4 mb-4" />
+              <div className="h-5 bg-background-hover rounded w-full mb-2" />
+              <div className="h-5 bg-background-hover rounded w-5/6 mb-6" />
+              <div className="h-12 bg-background-hover rounded w-40" />
+            </div>
+            <div className="order-1 md:order-2 flex justify-center md:justify-end">
+              <div className="w-[180px] md:w-[220px] aspect-cover bg-background-hover rounded-card" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!slides || slides.length === 0) {
+    return (
+      <div className="relative h-[400px] md:h-[500px] overflow-hidden bg-background-primary">
+        <div className="container-custom h-full flex items-center justify-center">
+          <div className="text-center text-foreground-secondary">
+            Пока нет новелл для показа
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative h-[400px] md:h-[500px] overflow-hidden bg-background-primary">
       {/* Slides */}
@@ -80,13 +90,16 @@ export function HeroSlider() {
         >
           {/* Background Image with Blur */}
           <div className="absolute inset-0">
-            <Image
-              src={slide.coverUrl}
-              alt=""
-              fill
-              className="object-cover blur-lg scale-110"
-              priority={index === 0}
-            />
+            {slide.coverUrl ? (
+              <Image
+                src={slide.coverUrl}
+                alt=""
+                fill
+                sizes="100vw"
+                className="object-cover blur-lg scale-110"
+                priority={index === 0}
+              />
+            ) : null}
             <div className="absolute inset-0 bg-gradient-to-r from-background-primary via-background-primary/90 to-transparent" />
           </div>
 
@@ -99,7 +112,7 @@ export function HeroSlider() {
                   {slide.title}
                 </h2>
                 <p className="text-foreground-secondary text-lg mb-6 line-clamp-3">
-                  {slide.description}
+                  {slide.description || ''}
                 </p>
                 <div className="flex items-center gap-4">
                   <Link
@@ -109,11 +122,6 @@ export function HeroSlider() {
                     <BookOpen className="w-5 h-5 mr-2" />
                     Читать
                   </Link>
-                  {slide.latestChapter && (
-                    <span className="text-foreground-secondary">
-                      Глава {slide.latestChapter}
-                    </span>
-                  )}
                 </div>
               </div>
 
@@ -123,13 +131,20 @@ export function HeroSlider() {
                   href={`/${locale}/novel/${slide.slug}`}
                   className="relative w-[180px] md:w-[220px] aspect-cover rounded-card overflow-hidden shadow-card-hover hover-lift"
                 >
-                  <Image
-                    src={slide.coverUrl}
-                    alt={slide.title}
-                    fill
-                    className="object-cover"
-                    priority={index === 0}
-                  />
+                  {slide.coverUrl ? (
+                    <Image
+                      src={slide.coverUrl}
+                      alt={slide.title}
+                      fill
+                      sizes="(max-width: 768px) 180px, 220px"
+                      className="object-cover"
+                      priority={index === 0}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-background-tertiary flex items-center justify-center">
+                      <BookOpen className="w-12 h-12 text-foreground-muted" />
+                    </div>
+                  )}
                 </Link>
               </div>
             </div>
@@ -138,6 +153,7 @@ export function HeroSlider() {
       ))}
 
       {/* Navigation Arrows */}
+      {slides.length > 1 && (
       <button
         onClick={prevSlide}
         className="absolute left-4 top-1/2 -translate-y-1/2 z-20 btn-ghost p-2 bg-background-primary/50 backdrop-blur-sm rounded-full"
@@ -145,6 +161,8 @@ export function HeroSlider() {
       >
         <ChevronLeft className="w-6 h-6" />
       </button>
+      )}
+      {slides.length > 1 && (
       <button
         onClick={nextSlide}
         className="absolute right-4 top-1/2 -translate-y-1/2 z-20 btn-ghost p-2 bg-background-primary/50 backdrop-blur-sm rounded-full"
@@ -152,22 +170,25 @@ export function HeroSlider() {
       >
         <ChevronRight className="w-6 h-6" />
       </button>
+      )}
 
       {/* Dots Indicator */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-        {slides.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => goToSlide(index)}
-            className={`w-2 h-2 rounded-full transition-all ${
-              index === currentSlide
-                ? 'w-8 bg-accent-primary'
-                : 'bg-foreground-muted/50 hover:bg-foreground-muted'
-            }`}
-            aria-label={`Go to slide ${index + 1}`}
-          />
-        ))}
-      </div>
+      {slides.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => goToSlide(index)}
+              className={`w-2 h-2 rounded-full transition-all ${
+                index === currentSlide
+                  ? 'w-8 bg-accent-primary'
+                  : 'bg-foreground-muted/50 hover:bg-foreground-muted'
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

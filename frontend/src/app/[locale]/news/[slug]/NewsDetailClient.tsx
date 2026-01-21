@@ -120,6 +120,7 @@ export default function NewsDetailClient({ locale, slug }: NewsDetailClientProps
             src={news.coverUrl}
             alt={news.title}
             fill
+            sizes="100vw"
             className="object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#121212]/50 to-[#121212]" />

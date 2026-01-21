@@ -50,6 +50,8 @@ interface ProposalResponse {
 
 export default function ProposalFormClient() {
   const t = useTranslations('proposals');
+  const tGenres = useTranslations('genres');
+  const tTags = useTranslations('tags');
   const locale = useLocale();
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
@@ -389,7 +391,7 @@ export default function ProposalFormClient() {
                       : 'bg-background-tertiary text-foreground-secondary hover:bg-background-hover'
                   }`}
                 >
-                  {t(`genres.${genre}`)}
+                  {tGenres(genre)}
                 </button>
               ))}
             </div>
@@ -410,7 +412,7 @@ export default function ProposalFormClient() {
                       : 'bg-background-tertiary text-foreground-secondary hover:bg-background-hover'
                   }`}
                 >
-                  {t(`tags.${tag}`)}
+                  {tTags(tag)}
                 </button>
               ))}
             </div>
@@ -474,7 +476,7 @@ export default function ProposalFormClient() {
               <div className="flex flex-wrap gap-2">
                 {formData.genres.map((genre) => (
                   <span key={genre} className="px-2 py-1 bg-accent-primary/20 text-accent-primary rounded-full text-xs">
-                    {t(`genres.${genre}`)}
+                    {tGenres(genre)}
                   </span>
                 ))}
               </div>
@@ -486,7 +488,7 @@ export default function ProposalFormClient() {
                 <div className="flex flex-wrap gap-2">
                   {formData.tags.map((tag) => (
                     <span key={tag} className="px-2 py-1 bg-accent-secondary/20 text-accent-secondary rounded-full text-xs">
-                      {t(`tags.${tag}`)}
+                      {tTags(tag)}
                     </span>
                   ))}
                 </div>

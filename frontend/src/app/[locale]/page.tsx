@@ -3,18 +3,32 @@
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ArrowRight, Vote, PlusCircle, Star, TrendingUp, Clock, Sparkles } from 'lucide-react';
-import { NovelCard } from '@/components/novel/NovelCard';
+import { NovelCard, NovelCardSkeleton } from '@/components/novel/NovelCard';
 import { HeroSlider } from '@/components/home/HeroSlider';
+import { useLatestNovels, useTrendingNovels, useNewReleases, useTopRatedNovels } from '@/lib/api/hooks/useNovels';
 
 export default function HomePage() {
   const t = useTranslations('home');
   const locale = useLocale();
+  
+  const { data: latest, isLoading: latestLoading } = useLatestNovels(12);
+  const { data: trending, isLoading: trendingLoading } = useTrendingNovels(10);
+  const { data: newReleases, isLoading: newLoading } = useNewReleases(10);
+  const { data: topRated, isLoading: topLoading } = useTopRatedNovels(10);
+
+  const heroSlides = (trending || []).slice(0, 3).map((n) => ({
+    id: n.id,
+    slug: n.slug,
+    title: n.title,
+    description: n.description,
+    coverUrl: n.coverUrl,
+  }));
 
   return (
     <div className="min-h-screen">
       {/* Hero Section with Slider */}
       <section className="relative">
-        <HeroSlider />
+        <HeroSlider slides={heroSlides} isLoading={trendingLoading} />
       </section>
 
       {/* Action Blocks - Voting & Propose */}
@@ -68,14 +82,14 @@ export default function HomePage() {
             <h2>{t('sections.latestUpdates')}</h2>
           </div>
           <Link
-            href={`/${locale}/catalog?sort=updated_at`}
+            href={`/${locale}/catalog?sort=updated`}
             className="text-sm text-accent-primary hover:underline flex items-center gap-1"
           >
             {t('sections.latestUpdates')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-        <LatestUpdatesGrid />
+        <LatestUpdatesGrid novels={latest || []} isLoading={latestLoading} />
       </section>
 
       {/* Popular */}
@@ -86,14 +100,14 @@ export default function HomePage() {
             <h2>{t('sections.popular')}</h2>
           </div>
           <Link
-            href="/catalog?sort=views"
+            href={`/${locale}/catalog?sort=popular`}
             className="text-sm text-accent-primary hover:underline flex items-center gap-1"
           >
             Смотреть все
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-        <NovelCarousel />
+        <NovelCarousel novels={trending || []} isLoading={trendingLoading} />
       </section>
 
       {/* New Releases */}
@@ -104,14 +118,14 @@ export default function HomePage() {
             <h2>{t('sections.newReleases')}</h2>
           </div>
           <Link
-            href="/catalog?sort=created_at"
+            href={`/${locale}/catalog?sort=created`}
             className="text-sm text-accent-primary hover:underline flex items-center gap-1"
           >
             Смотреть все
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-        <NovelCarousel />
+        <NovelCarousel novels={newReleases || []} isLoading={newLoading} />
       </section>
 
       {/* Top Rated */}
@@ -122,63 +136,57 @@ export default function HomePage() {
             <h2>{t('sections.topRated')}</h2>
           </div>
           <Link
-            href="/catalog?sort=rating"
+            href={`/${locale}/catalog?sort=rating`}
             className="text-sm text-accent-primary hover:underline flex items-center gap-1"
           >
             Смотреть все
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-        <NovelCarousel />
+        <NovelCarousel novels={topRated || []} isLoading={topLoading} />
       </section>
     </div>
   );
 }
 
 // Компонент сетки последних обновлений
-function LatestUpdatesGrid() {
-  // TODO: Загружать данные через API
-  const mockNovels = Array(12).fill(null).map((_, i) => ({
-    id: `novel-${i}`,
-    slug: `novel-${i}`,
-    title: `Название новеллы ${i + 1}`,
-    coverUrl: `/placeholder-cover.svg`,
-    rating: 4.5,
-    latestChapter: 150 + i,
-    updatedAt: new Date().toISOString(),
-    isNew: i < 3,
-  }));
-
+function LatestUpdatesGrid({
+  novels,
+  isLoading,
+}: {
+  novels: Array<Parameters<typeof NovelCard>[0]['novel']>;
+  isLoading?: boolean;
+}) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-      {mockNovels.map((novel) => (
-        <NovelCard key={novel.id} novel={novel} />
-      ))}
+      {isLoading
+        ? Array.from({ length: 12 }).map((_, i) => <NovelCardSkeleton key={i} />)
+        : novels.map((novel) => <NovelCard key={novel.id} novel={novel} />)}
     </div>
   );
 }
 
 // Компонент карусели новелл
-function NovelCarousel() {
-  // TODO: Загружать данные через API
-  const mockNovels = Array(10).fill(null).map((_, i) => ({
-    id: `novel-${i}`,
-    slug: `novel-${i}`,
-    title: `Название новеллы ${i + 1}`,
-    coverUrl: `/placeholder-cover.svg`,
-    rating: 4.5,
-    latestChapter: 150 + i,
-    updatedAt: new Date().toISOString(),
-    isNew: i < 2,
-  }));
-
+function NovelCarousel({
+  novels,
+  isLoading,
+}: {
+  novels: Array<Parameters<typeof NovelCard>[0]['novel']>;
+  isLoading?: boolean;
+}) {
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-      {mockNovels.map((novel) => (
-        <div key={novel.id} className="flex-shrink-0 w-[150px] md:w-[180px]">
-          <NovelCard novel={novel} />
-        </div>
-      ))}
+      {isLoading
+        ? Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex-shrink-0 w-[150px] md:w-[180px]">
+              <NovelCardSkeleton />
+            </div>
+          ))
+        : novels.map((novel) => (
+            <div key={novel.id} className="flex-shrink-0 w-[150px] md:w-[180px]">
+              <NovelCard novel={novel} />
+            </div>
+          ))}
     </div>
   );
 }

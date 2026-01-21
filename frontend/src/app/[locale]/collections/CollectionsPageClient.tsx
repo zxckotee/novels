@@ -311,6 +311,7 @@ function CollectionCard({
               src={coverSrc}
               alt={collection.title}
               fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
               className="object-cover"
             />
           ) : previewCovers.length > 0 ? (
@@ -325,6 +326,7 @@ function CollectionCard({
                     src={src}
                     alt=""
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                     className="object-cover opacity-60"
                   />
                 </div>

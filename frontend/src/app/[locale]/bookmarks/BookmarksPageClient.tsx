@@ -286,6 +286,7 @@ export default function BookmarksPageClient({ locale }: BookmarksPageClientProps
                           src={`/uploads/${bookmark.novel.coverImageKey}`}
                           alt={bookmark.novel.title}
                           fill
+                          sizes="(max-width: 768px) 80px, 96px"
                           className="object-cover"
                         />
                       ) : (

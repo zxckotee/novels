@@ -47,9 +47,7 @@ export default function ProposalsPageClient() {
     },
   });
   
-  // Debug: log response
-  console.log('Proposals data:', proposals);
-  console.log('Proposals error:', error);
+  // Debug logs removed
 
   return (
     <div className="container-custom py-8">
@@ -90,9 +88,9 @@ export default function ProposalsPageClient() {
           className="input w-full sm:w-48"
         >
           <option value="all">Все статусы</option>
-          <option value="pending">На рассмотрении</option>
+          <option value="moderation">На рассмотрении</option>
           <option value="voting">На голосовании</option>
-          <option value="approved">Одобрено</option>
+          <option value="accepted">Одобрено</option>
           <option value="rejected">Отклонено</option>
         </select>
       </div>
@@ -166,16 +164,18 @@ export default function ProposalsPageClient() {
                   <span className={`px-3 py-1 rounded-full text-xs ${
                     proposal.status === 'voting'
                       ? 'bg-status-info/20 text-status-info'
-                      : proposal.status === 'approved'
+                      : proposal.status === 'accepted'
                       ? 'bg-status-success/20 text-status-success'
                       : proposal.status === 'rejected'
                       ? 'bg-status-error/20 text-status-error'
+                      : proposal.status === 'moderation'
+                      ? 'bg-accent-warning/20 text-accent-warning'
                       : 'bg-background-tertiary text-foreground-muted'
                   }`}>
                     {proposal.status === 'voting' && 'На голосовании'}
-                    {proposal.status === 'approved' && 'Одобрено'}
+                    {proposal.status === 'accepted' && 'Одобрено'}
                     {proposal.status === 'rejected' && 'Отклонено'}
-                    {proposal.status === 'pending' && 'Ожидание'}
+                    {proposal.status === 'moderation' && 'На рассмотрении'}
                   </span>
                 </div>
               </div>

@@ -244,6 +244,7 @@ export default function CollectionDetailClient({ locale, slug }: CollectionDetai
               src={nextImageSrcFromApi(collection.coverUrl)!}
               alt=""
               fill
+              sizes="100vw"
               className="object-cover blur-xl opacity-30"
             />
           ) : (

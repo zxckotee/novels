@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useChapter, useSaveProgress } from '@/lib/api/hooks/useChapters';
 import { useAuthStore } from '@/store/auth';
+import { useChapters } from '@/lib/api/hooks/useChapters';
 
 interface ReaderPageProps {
   params: {
@@ -79,13 +80,15 @@ export default function ReaderPage({ params }: ReaderPageProps) {
   // Fetch chapter data
   const { data: chapter, isLoading, error } = useChapter(slug, chapterId, locale);
   const { mutate: saveProgress } = useSaveProgress();
+  const { data: tocData } = useChapters(slug, 1, 200);
+  const tocChapters = tocData?.data || [];
   
   // Save progress when chapter loads
   useEffect(() => {
     if (chapter && isAuthenticated) {
       saveProgress({
-        novelId: chapter.novel.id,
         chapterId: chapter.id,
+        position: 0,
       });
     }
   }, [chapter, isAuthenticated, saveProgress]);
@@ -101,9 +104,9 @@ export default function ReaderPage({ params }: ReaderPageProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' && chapter?.prevChapter) {
-        window.location.href = `/${locale}/novel/${slug}/chapter/${chapter.prevChapter.number}`;
+        window.location.href = `/${locale}/novel/${slug}/chapter/${chapter.prevChapter.id}`;
       } else if (e.key === 'ArrowRight' && chapter?.nextChapter) {
-        window.location.href = `/${locale}/novel/${slug}/chapter/${chapter.nextChapter.number}`;
+        window.location.href = `/${locale}/novel/${slug}/chapter/${chapter.nextChapter.id}`;
       }
     };
     
@@ -205,7 +208,7 @@ export default function ReaderPage({ params }: ReaderPageProps) {
           <div className="flex items-center justify-between gap-4">
             {chapter.prevChapter ? (
               <Link
-                href={`/${locale}/novel/${slug}/chapter/${chapter.prevChapter.number}`}
+                href={`/${locale}/novel/${slug}/chapter/${chapter.prevChapter.id}`}
                 className="btn-secondary flex items-center gap-2 flex-1 justify-center max-w-[200px]"
               >
                 <ChevronLeft className="w-5 h-5" />
@@ -225,7 +228,7 @@ export default function ReaderPage({ params }: ReaderPageProps) {
             
             {chapter.nextChapter ? (
               <Link
-                href={`/${locale}/novel/${slug}/chapter/${chapter.nextChapter.number}`}
+                href={`/${locale}/novel/${slug}/chapter/${chapter.nextChapter.id}`}
                 className="btn-primary flex items-center gap-2 flex-1 justify-center max-w-[200px]"
               >
                 <span className="hidden sm:inline">Следующая</span>
@@ -255,7 +258,7 @@ export default function ReaderPage({ params }: ReaderPageProps) {
       <nav className="fixed bottom-0 left-0 right-0 bg-background-secondary/95 backdrop-blur-sm border-t border-background-tertiary md:hidden z-30">
         <div className="flex items-center justify-between h-14 px-4">
           <Link
-            href={chapter.prevChapter ? `/${locale}/novel/${slug}/chapter/${chapter.prevChapter.number}` : '#'}
+            href={chapter.prevChapter ? `/${locale}/novel/${slug}/chapter/${chapter.prevChapter.id}` : '#'}
             className={`flex items-center gap-1 ${chapter.prevChapter ? '' : 'opacity-50 pointer-events-none'}`}
           >
             <ChevronLeft className="w-6 h-6" />
@@ -271,7 +274,7 @@ export default function ReaderPage({ params }: ReaderPageProps) {
           </button>
           
           <Link
-            href={chapter.nextChapter ? `/${locale}/novel/${slug}/chapter/${chapter.nextChapter.number}` : '#'}
+            href={chapter.nextChapter ? `/${locale}/novel/${slug}/chapter/${chapter.nextChapter.id}` : '#'}
             className={`flex items-center gap-1 ${chapter.nextChapter ? '' : 'opacity-50 pointer-events-none'}`}
           >
             <span>Далее</span>
@@ -297,9 +300,28 @@ export default function ReaderPage({ params }: ReaderPageProps) {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-foreground-muted text-center py-8">
-              Загрузка оглавления...
-            </p>
+            {tocChapters.length === 0 ? (
+              <p className="text-foreground-muted text-center py-8">Главы не найдены</p>
+            ) : (
+              <div className="space-y-1">
+                {tocChapters.map((ch) => {
+                  const isActive = ch.id === chapterId;
+                  return (
+                    <Link
+                      key={ch.id}
+                      href={`/${locale}/novel/${slug}/chapter/${ch.id}`}
+                      onClick={() => setShowTOC(false)}
+                      className={`block px-3 py-2 rounded transition-colors ${
+                        isActive ? 'bg-accent-primary text-white' : 'hover:bg-background-hover'
+                      }`}
+                    >
+                      <div className="text-sm font-medium">Глава {ch.number}</div>
+                      {ch.title && <div className="text-xs opacity-80 line-clamp-1">{ch.title}</div>}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </aside>
         </div>
       )}

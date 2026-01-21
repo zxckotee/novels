@@ -31,6 +31,7 @@ export interface NovelListItem {
   slug: string;
   coverUrl?: string;
   title: string;
+  description?: string;
   rating: number;
   translationStatus: 'ongoing' | 'completed' | 'paused' | 'dropped';
   latestChapter?: number;

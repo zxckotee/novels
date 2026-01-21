@@ -51,6 +51,8 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
   const { data: chaptersData } = useChapters(slug);
   
   const chapters = chaptersData?.data || [];
+  const chaptersCount = chapters.length;
+  const firstChapterId = chapters[0]?.id;
   
   if (isLoading) {
     return <NovelPageSkeleton />;
@@ -78,6 +80,7 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
               src={novel.coverUrl}
               alt=""
               fill
+              sizes="100vw"
               className="object-cover blur-xl scale-110 opacity-30"
             />
           )}
@@ -95,6 +98,7 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
                     src={novel.coverUrl}
                     alt={novel.title}
                     fill
+                    sizes="200px"
                     className="object-cover"
                     priority
                   />
@@ -141,7 +145,7 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
                 )}
                 <span className="flex items-center gap-1">
                   <BookOpen className="w-4 h-4" />
-                  {novel.chaptersCount} / {novel.originalChaptersCount} глав
+                  {chaptersCount} / {novel.originalChaptersCount} глав
                 </span>
               </div>
               
@@ -189,8 +193,8 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
               {/* Action Buttons */}
               <div className="flex flex-wrap justify-center md:justify-start gap-3">
                 <Link
-                  href={`/${locale}/novel/${slug}/chapter/1`}
-                  className="btn-primary text-base px-6 py-3 flex items-center gap-2"
+                  href={firstChapterId ? `/${locale}/novel/${slug}/chapter/${firstChapterId}` : `/${locale}/novel/${slug}`}
+                  className={`btn-primary text-base px-6 py-3 flex items-center gap-2 ${firstChapterId ? '' : 'opacity-50 pointer-events-none'}`}
                 >
                   <BookOpen className="w-5 h-5" />
                   Читать
@@ -232,7 +236,7 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
                 }`}
               >
                 {tab === 'description' && 'Описание'}
-                {tab === 'chapters' && `Главы (${novel.chaptersCount})`}
+                {tab === 'chapters' && `Главы (${chaptersCount})`}
                 {tab === 'comments' && 'Комментарии'}
               </button>
             ))}
@@ -315,7 +319,7 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
                 {chapters.map(chapter => (
                   <Link
                     key={chapter.id}
-                    href={`/${locale}/novel/${slug}/chapter/${chapter.number}`}
+                    href={`/${locale}/novel/${slug}/chapter/${chapter.id}`}
                     className="flex items-center justify-between p-3 bg-background-secondary rounded hover:bg-background-hover transition-colors group"
                   >
                     <div className="flex items-center gap-3">
@@ -327,7 +331,7 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-foreground-muted">
-                      <span>{formatDate(chapter.publishedAt)}</span>
+                      <span>{chapter.publishedAt ? formatDate(chapter.publishedAt) : '—'}</span>
                       <ChevronRight className="w-4 h-4" />
                     </div>
                   </Link>
@@ -375,7 +379,8 @@ function NovelPageSkeleton() {
 }
 
 // Helper functions
-function formatNumber(num: number): string {
+function formatNumber(num?: number | null): string {
+  if (typeof num !== 'number' || Number.isNaN(num)) return '0';
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
   if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return num.toString();
