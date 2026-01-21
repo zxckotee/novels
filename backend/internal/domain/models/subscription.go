@@ -22,6 +22,9 @@ type SubscriptionPlanCode string
 const (
 	PlanBasic   SubscriptionPlanCode = "basic"
 	PlanPremium SubscriptionPlanCode = "premium"
+	// PlanVIP matches UI + DB plan code "vip"
+	PlanVIP SubscriptionPlanCode = "vip"
+	// PlanUltimate kept for backwards-compatibility (legacy code)
 	PlanUltimate SubscriptionPlanCode = "ultimate"
 )
 
@@ -46,8 +49,10 @@ type SubscriptionPlan struct {
 // PlanFeatures represents the features of a subscription plan
 type PlanFeatures struct {
 	DailyVoteMultiplier      int  `json:"dailyVoteMultiplier"`      // multiplier for daily votes
-	MonthlyNovelRequests     int  `json:"monthlyNovelRequests"`     // novel request tickets per month
-	MonthlyTranslationTickets int `json:"monthlyTranslationTickets"` // translation tickets per month
+	// NOTE: These fields are still named "Monthly*" for compatibility with stored JSON,
+	// but they are interpreted as WEEKLY grant amounts (Wed 00:00 UTC) in the current economy.
+	MonthlyNovelRequests      int `json:"monthlyNovelRequests"`      // novel request tickets per week
+	MonthlyTranslationTickets int `json:"monthlyTranslationTickets"` // translation tickets per week
 	AdFree                   bool `json:"adFree"`                   // no ads
 	CanEditDescriptions      bool `json:"canEditDescriptions"`      // can edit novel descriptions
 	CanRequestRetranslation  bool `json:"canRequestRetranslation"`  // can request chapter retranslation
@@ -129,18 +134,29 @@ func DefaultPlanFeatures() map[SubscriptionPlanCode]PlanFeatures {
 		},
 		PlanPremium: {
 			DailyVoteMultiplier:       2,
-			MonthlyNovelRequests:      3,
-			MonthlyTranslationTickets: 10,
+			MonthlyNovelRequests:      2,
+			MonthlyTranslationTickets: 5,
 			AdFree:                    true,
 			CanEditDescriptions:       true,
 			CanRequestRetranslation:   true,
 			PrioritySupport:           false,
 			ExclusiveBadge:            true,
 		},
-		PlanUltimate: {
-			DailyVoteMultiplier:       3,
+		PlanVIP: {
+			DailyVoteMultiplier:       5,
 			MonthlyNovelRequests:      5,
-			MonthlyTranslationTickets: 25,
+			MonthlyTranslationTickets: 15,
+			AdFree:                    true,
+			CanEditDescriptions:       true,
+			CanRequestRetranslation:   true,
+			PrioritySupport:           true,
+			ExclusiveBadge:            true,
+		},
+		// Legacy alias
+		PlanUltimate: {
+			DailyVoteMultiplier:       5,
+			MonthlyNovelRequests:      5,
+			MonthlyTranslationTickets: 15,
 			AdFree:                    true,
 			CanEditDescriptions:       true,
 			CanRequestRetranslation:   true,

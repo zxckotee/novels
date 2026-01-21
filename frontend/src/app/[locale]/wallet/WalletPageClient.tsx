@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { toast } from 'react-hot-toast';
 
 interface WalletInfo {
   userId: string;
@@ -35,11 +36,31 @@ export default function WalletPageClient() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-heading font-bold">{t('title')}</h1>
         <div className="flex items-center gap-2">
-          <Link href={`/${locale}/voting`} className="btn-secondary">
-            {t('dailyVotes')}
+          <Link
+            href={`/${locale}/voting`}
+            className="btn-secondary"
+            onClick={(e) => {
+              // Prevent navigation if wallet is loaded and there are no daily votes
+              if (!isLoading && (wallet?.dailyVotes ?? 0) < 1) {
+                e.preventDefault();
+                toast.error(t('noDailyVotesToast'));
+              }
+            }}
+          >
+            {t('goToVoting')}
           </Link>
-          <Link href={`/${locale}/proposals/new`} className="btn-primary">
-            {t('novelRequests')}
+          <Link
+            href={`/${locale}/proposals/new`}
+            className="btn-primary"
+            onClick={(e) => {
+              // Prevent navigation if wallet is loaded and there are no novel request tickets
+              if (!isLoading && (wallet?.novelRequests ?? 0) < 1) {
+                e.preventDefault();
+                toast.error(t('noNovelRequestsToast'));
+              }
+            }}
+          >
+            {t('goToProposal')}
           </Link>
         </div>
       </div>

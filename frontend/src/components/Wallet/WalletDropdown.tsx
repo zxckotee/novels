@@ -125,7 +125,7 @@ export function WalletDropdown() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm text-text-secondary">{t('dailyVotes')}</p>
+                    <p className="text-sm text-text-secondary" title={t('dailyVotesHint')}>{t('dailyVotes')}</p>
                     <p className="text-lg font-bold text-text-primary">{wallet?.dailyVotes ?? 0}</p>
                   </div>
                 </div>
@@ -147,7 +147,7 @@ export function WalletDropdown() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm text-text-secondary">{t('novelRequests')}</p>
+                    <p className="text-sm text-text-secondary" title={t('novelRequestsHint')}>{t('novelRequests')}</p>
                     <p className="text-lg font-bold text-text-primary">{wallet?.novelRequests ?? 0}</p>
                   </div>
                 </div>
@@ -169,7 +169,7 @@ export function WalletDropdown() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm text-text-secondary">{t('translationTickets')}</p>
+                    <p className="text-sm text-text-secondary" title={t('translationTicketsHint')}>{t('translationTickets')}</p>
                     <p className="text-lg font-bold text-text-primary">{wallet?.translationTickets ?? 0}</p>
                   </div>
                 </div>
@@ -188,7 +188,7 @@ export function WalletDropdown() {
             {/* Links */}
             <div className="mt-4 pt-4 border-t border-border space-y-2">
               <Link
-                href={`/${locale}/wallet`}
+                href={`/${locale}/profile#wallet`}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface rounded-lg transition-colors"
                 onClick={() => setIsOpen(false)}
               >

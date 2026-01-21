@@ -1,12 +1,14 @@
 package routes
 
 import (
+	"context"
 	"net/http"
 	"time"
 
 	"novels-backend/internal/config"
 	"novels-backend/internal/http/handlers"
 	"novels-backend/internal/http/middleware"
+	"novels-backend/internal/jobs"
 	"novels-backend/internal/repository"
 	"novels-backend/internal/service"
 
@@ -18,7 +20,7 @@ import (
 )
 
 // NewRouter создает новый роутер с настроенными маршрутами
-func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler {
+func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) (http.Handler, *jobs.Scheduler) {
 	r := chi.NewRouter()
 
 	// Глобальные middleware
@@ -94,6 +96,10 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 	commentAdminHandler := handlers.NewCommentAdminHandler(commentRepo)
 	adminSystemHandler := handlers.NewAdminSystemHandler(adminService)
 
+	// Job scheduler (daily grants, etc.)
+	scheduler := jobs.NewScheduler(db, ticketService, votingService, subscriptionService, log)
+	jobsHandler := handlers.NewJobsHandler(scheduler, log)
+
 	// Auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService, cfg.JWT)
 
@@ -168,6 +174,12 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 
 			// История правок для новеллы (публичная)
 			r.Get("/novels/{id}/edit-history", wikiEditHandler.GetNovelEditHistory)
+
+			// Jobs (password-protected; useful for ops/testing without admin JWT)
+			r.Get("/jobs/daily-votes/status", jobsHandler.GetDailyVotesStatus)
+			r.Post("/jobs/daily-votes/run", jobsHandler.RunDailyVotesNow)
+			r.Get("/jobs/weekly-tickets/status", jobsHandler.GetWeeklyTicketsStatus)
+			r.Post("/jobs/weekly-tickets/run", jobsHandler.RunWeeklyTicketsNow)
 		})
 
 		// Защищенные маршруты (требуют аутентификации)
@@ -344,6 +356,12 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 				r.Put("/settings/{key}", adminSystemHandler.UpdateSetting)
 				r.Get("/logs", adminSystemHandler.GetLogs)
 				r.Get("/stats", adminSystemHandler.GetStats)
+
+				// Jobs (admin)
+				r.Get("/jobs/daily-votes/status", jobsHandler.GetDailyVotesStatus)
+				r.Post("/jobs/daily-votes/run", jobsHandler.RunDailyVotesNow)
+				r.Get("/jobs/weekly-tickets/status", jobsHandler.GetWeeklyTicketsStatus)
+				r.Post("/jobs/weekly-tickets/run", jobsHandler.RunWeeklyTicketsNow)
 			})
 		})
 	})
@@ -351,5 +369,7 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) http.Handler
 	// Статические файлы (загруженные изображения)
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadsDir))))
 
-	return r
+	// Ensure scheduler has a usable context (handlers may call "run now")
+	_ = context.Background()
+	return r, scheduler
 }

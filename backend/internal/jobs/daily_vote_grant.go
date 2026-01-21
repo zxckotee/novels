@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"novels-backend/internal/domain/models"
 	"novels-backend/internal/service"
@@ -100,7 +101,7 @@ func (j *DailyVoteGrantJob) Run(ctx context.Context) error {
 }
 
 // getUserBatch returns a batch of active user IDs
-func (j *DailyVoteGrantJob) getUserBatch(ctx context.Context, limit, offset int) ([]interface{}, error) {
+func (j *DailyVoteGrantJob) getUserBatch(ctx context.Context, limit, offset int) ([]uuid.UUID, error) {
 	query := `
 		SELECT id FROM users 
 		WHERE is_banned = false 
@@ -114,9 +115,9 @@ func (j *DailyVoteGrantJob) getUserBatch(ctx context.Context, limit, offset int)
 	}
 	defer rows.Close()
 	
-	var users []interface{}
+	var users []uuid.UUID
 	for rows.Next() {
-		var id interface{}
+		var id uuid.UUID
 		if err := rows.Scan(&id); err != nil {
 			continue
 		}

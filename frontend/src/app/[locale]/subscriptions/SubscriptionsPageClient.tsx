@@ -390,14 +390,14 @@ export default function SubscriptionsPageClient() {
               <tr className="border-b border-border/50">
                 <td className="py-4 pr-4 text-text-secondary">{t('comparison.novelRequests')}</td>
                 <td className="text-center py-4 px-4 text-text-muted">—</td>
-                <td className="text-center py-4 px-4 text-text-primary">2/{t('month')}</td>
-                <td className="text-center py-4 px-4 text-text-primary">5/{t('month')}</td>
+                <td className="text-center py-4 px-4 text-text-primary">2/{t('week')}</td>
+                <td className="text-center py-4 px-4 text-text-primary">5/{t('week')}</td>
               </tr>
               <tr className="border-b border-border/50">
                 <td className="py-4 pr-4 text-text-secondary">{t('comparison.translationTickets')}</td>
                 <td className="text-center py-4 px-4 text-text-muted">—</td>
-                <td className="text-center py-4 px-4 text-text-primary">5/{t('month')}</td>
-                <td className="text-center py-4 px-4 text-text-primary">15/{t('month')}</td>
+                <td className="text-center py-4 px-4 text-text-primary">5/{t('week')}</td>
+                <td className="text-center py-4 px-4 text-text-primary">15/{t('week')}</td>
               </tr>
               <tr className="border-b border-border/50">
                 <td className="py-4 pr-4 text-text-secondary">{t('comparison.noAds')}</td>

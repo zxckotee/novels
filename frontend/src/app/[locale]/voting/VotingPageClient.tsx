@@ -23,6 +23,7 @@ interface Proposal {
   tags: string[];
   voteScore: number;
   votesCount: number;
+  translationTicketsInvested?: number;
   createdAt: string;
   user?: {
     id: string;
@@ -109,12 +110,13 @@ export default function VotingPageClient() {
       return response.data;
     },
     onSuccess: () => {
-      toast.success(t('voteSuccess'));
+      toast.success(selectedTicketType === 'translation_ticket' ? t('investSuccess') : t('voteSuccess'));
       queryClient.invalidateQueries({ queryKey: ['voting-leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || t('voteError'));
+      const backendMessage = error?.response?.data?.error?.message;
+      toast.error(backendMessage || t('voteError'));
     },
   });
 
@@ -342,7 +344,10 @@ export default function VotingPageClient() {
                 <div className="flex-shrink-0 flex flex-col items-center justify-between">
                   <div className="text-center">
                     <p className="text-2xl font-bold text-accent-primary">{entry.score}</p>
-                    <p className="text-xs text-foreground-muted">{t('votes')}</p>
+                    <p className="text-xs text-foreground-muted">{t('dailyVotesLabel')}</p>
+                    <p className="text-xs text-foreground-muted mt-1">
+                      {t('translationInvested')}: {entry.proposal.translationTicketsInvested ?? 0}
+                    </p>
                   </div>
 
                   {isAuthenticated && (
@@ -365,7 +370,7 @@ export default function VotingPageClient() {
                         disabled={voteMutation.isPending || getTicketBalance() < 1}
                         className="btn-primary"
                       >
-                        {voteMutation.isPending ? '...' : t('vote')}
+                        {voteMutation.isPending ? '...' : (selectedTicketType === 'translation_ticket' ? t('invest') : t('vote'))}
                       </button>
                     </div>
                   )}

@@ -157,7 +157,7 @@ export function Header() {
             {mounted && isAuthenticated && (
               <>
                 {/* Wallet */}
-                <Link href={`/${locale}/wallet`} className="btn-ghost p-2">
+                <Link href={`/${locale}/profile#wallet`} className="btn-ghost p-2">
                   <Wallet className="w-5 h-5" />
                 </Link>
 

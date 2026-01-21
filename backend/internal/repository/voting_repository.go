@@ -64,7 +64,7 @@ func (r *VotingRepository) GetProposalByID(ctx context.Context, id uuid.UUID) (*
 		SELECT 
 			np.id, np.user_id, np.original_link, np.status,
 			np.title, np.alt_titles, np.author, np.description, np.cover_url,
-			np.genres, np.tags, np.vote_score, np.votes_count,
+			np.genres, np.tags, np.vote_score, np.votes_count, np.translation_tickets_invested,
 			np.moderator_id, np.reject_reason,
 			np.created_at, np.updated_at
 		FROM novel_proposals np
@@ -77,7 +77,7 @@ func (r *VotingRepository) GetProposalByID(ctx context.Context, id uuid.UUID) (*
 	err := r.db.QueryRowxContext(ctx, query, id).Scan(
 		&proposal.ID, &proposal.UserID, &proposal.OriginalLink, &proposal.Status,
 		&proposal.Title, &altTitles, &proposal.Author, &proposal.Description, &proposal.CoverURL,
-		&genres, &tags, &proposal.VoteScore, &proposal.VotesCount,
+		&genres, &tags, &proposal.VoteScore, &proposal.VotesCount, &proposal.TranslationTicketsInvested,
 		&proposal.ModeratorID, &proposal.RejectReason,
 		&proposal.CreatedAt, &proposal.UpdatedAt,
 	)
@@ -126,7 +126,7 @@ func (r *VotingRepository) GetProposalWithUser(ctx context.Context, id uuid.UUID
 	// Get current user's vote if provided
 	if currentUserID != nil {
 		var userVote int
-		voteQuery := `SELECT COALESCE(SUM(amount), 0) FROM votes WHERE proposal_id = $1 AND user_id = $2`
+		voteQuery := `SELECT COALESCE(SUM(amount), 0) FROM votes WHERE proposal_id = $1 AND user_id = $2 AND ticket_type = 'daily_vote'`
 		r.db.GetContext(ctx, &userVote, voteQuery, id, *currentUserID)
 		if userVote > 0 {
 			proposal.UserVote = &userVote
@@ -185,7 +185,7 @@ func (r *VotingRepository) ListProposals(ctx context.Context, filter models.Prop
 		SELECT
 			np.id, np.user_id, np.original_link, np.status,
 			np.title, np.alt_titles, np.author, np.description, np.cover_url,
-			np.genres, np.tags, np.vote_score, np.votes_count,
+			np.genres, np.tags, np.vote_score, np.votes_count, np.translation_tickets_invested,
 			np.moderator_id, np.reject_reason,
 			np.created_at, np.updated_at,
 			COALESCE(up.display_name, u.email) as user_display_name,
@@ -218,7 +218,7 @@ func (r *VotingRepository) ListProposals(ctx context.Context, filter models.Prop
 		err := rows.Scan(
 			&proposal.ID, &proposal.UserID, &proposal.OriginalLink, &proposal.Status,
 			&proposal.Title, &altTitles, &proposal.Author, &proposal.Description, &proposal.CoverURL,
-			&genres, &tags, &proposal.VoteScore, &proposal.VotesCount,
+			&genres, &tags, &proposal.VoteScore, &proposal.VotesCount, &proposal.TranslationTicketsInvested,
 			&proposal.ModeratorID, &proposal.RejectReason,
 			&proposal.CreatedAt, &proposal.UpdatedAt,
 			&userDisplayName, &userAvatarURL, &userLevel,
@@ -408,7 +408,7 @@ func (r *VotingRepository) GetVotingLeaderboard(ctx context.Context, limit int) 
 		SELECT 
 			np.id, np.user_id, np.original_link, np.status,
 			np.title, np.alt_titles, np.author, np.description, np.cover_url,
-			np.genres, np.tags, np.vote_score, np.votes_count,
+			np.genres, np.tags, np.vote_score, np.votes_count, np.translation_tickets_invested,
 			np.created_at, np.updated_at,
 			COALESCE(up.display_name, u.email) as user_display_name,
 			up.avatar_key as user_avatar,
@@ -438,7 +438,7 @@ func (r *VotingRepository) GetVotingLeaderboard(ctx context.Context, limit int) 
 		err := rows.Scan(
 			&proposal.ID, &proposal.UserID, &proposal.OriginalLink, &proposal.Status,
 			&proposal.Title, &altTitles, &proposal.Author, &proposal.Description, &proposal.CoverURL,
-			&genres, &tags, &proposal.VoteScore, &proposal.VotesCount,
+			&genres, &tags, &proposal.VoteScore, &proposal.VotesCount, &proposal.TranslationTicketsInvested,
 			&proposal.CreatedAt, &proposal.UpdatedAt,
 			&userDisplayName, &userAvatarURL, &userLevel,
 		)

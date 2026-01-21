@@ -37,6 +37,8 @@ type NovelProposal struct {
 	// Voting stats
 	VoteScore   int       `json:"voteScore" db:"vote_score"`
 	VotesCount  int       `json:"votesCount" db:"votes_count"`
+	// Translation ticket investments (do not affect voteScore)
+	TranslationTicketsInvested int `json:"translationTicketsInvested" db:"translation_tickets_invested"`
 	
 	// Moderation
 	ModeratorID   *uuid.UUID `json:"moderatorId,omitempty" db:"moderator_id"`

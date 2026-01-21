@@ -206,10 +206,13 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
                 </button>
                 
                 {isAuthenticated && (
-                  <button className="btn-ghost text-base px-4 py-3 flex items-center gap-2">
+                  <Link
+                    href={`/${locale}/voting`}
+                    className="btn-ghost text-base px-4 py-3 flex items-center gap-2"
+                  >
                     <ThumbsUp className="w-5 h-5" />
                     Голосовать
-                  </button>
+                  </Link>
                 )}
                 
                 <button className="btn-ghost text-base p-3">

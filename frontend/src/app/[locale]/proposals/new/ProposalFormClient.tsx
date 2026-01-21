@@ -70,7 +70,7 @@ export default function ProposalFormClient() {
   const [step, setStep] = useState(1);
 
   // Check wallet for Novel Request tickets
-  const { data: wallet } = useQuery<WalletInfo>({
+  const { data: wallet, isLoading: walletLoading } = useQuery<WalletInfo>({
     queryKey: ['wallet'],
     queryFn: async () => {
       const response = await api.get<WalletInfo>('/wallet');
@@ -79,9 +79,8 @@ export default function ProposalFormClient() {
     enabled: isAuthenticated,
   });
 
-  // Premium users always have access, or if they have tickets
-  const hasPremiumAccess = isPremium(user);
-  const hasTicket = (wallet?.novelRequests ?? 0) > 0 || hasPremiumAccess;
+  // Backend enforces ticket balance; don't bypass with "premium" role here.
+  const hasTicket = (wallet?.novelRequests ?? 0) > 0;
 
   // Submit proposal
   const submitMutation = useMutation<ProposalResponse, unknown, ProposalFormData>({
@@ -94,7 +93,13 @@ export default function ProposalFormClient() {
       router.push(`/${locale}/voting`);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || t('newProposal.error'));
+      const status = error?.response?.status;
+      const backendMessage = error?.response?.data?.error?.message;
+      if (status === 402) {
+        toast.error(t('newProposal.noTicket'));
+        return;
+      }
+      toast.error(backendMessage || t('newProposal.error'));
     },
   });
 
@@ -167,6 +172,14 @@ export default function ProposalFormClient() {
         <Link href={`/${locale}/login`} className="btn-primary">
           {t('newProposal.login')}
         </Link>
+      </div>
+    );
+  }
+
+  if (walletLoading) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <p className="text-foreground-secondary">{t('newProposal.submitting')}</p>
       </div>
     );
   }

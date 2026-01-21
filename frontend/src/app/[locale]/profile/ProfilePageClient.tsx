@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { hasRole } from '@/store/auth';
+import { WalletCompact } from '@/components/Wallet/WalletCompact';
 
 interface UserSubscriptionInfo {
   hasActiveSubscription: boolean;
@@ -240,6 +241,9 @@ export default function ProfilePageClient() {
           </Link>
         </div>
       </div>
+
+      {/* Wallet (compact) */}
+      <WalletCompact />
       
       {/* Tabs */}
       <div className="flex gap-1 mb-6 overflow-x-auto">

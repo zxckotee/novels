@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"novels-backend/internal/repository"
 	"novels-backend/internal/service"
 	"github.com/rs/zerolog"
 )
@@ -19,6 +20,7 @@ type Scheduler struct {
 	logger            zerolog.Logger
 	
 	dailyVoteJob      *DailyVoteGrantJob
+	weeklyTicketJob   *WeeklyTicketGrantJob
 	
 	stopCh            chan struct{}
 	wg                sync.WaitGroup
@@ -47,10 +49,12 @@ func (s *Scheduler) Start(ctx context.Context) {
 	
 	// Initialize jobs
 	s.dailyVoteJob = NewDailyVoteGrantJob(s.db, s.ticketService, s.logger)
+	// weekly job initialized lazily in runner
 	
 	// Start job runners
-	s.wg.Add(4)
+	s.wg.Add(5)
 	go s.runDailyVoteJob(ctx)
+	go s.runWeeklyTicketJob(ctx)
 	go s.runVotingWinnerJob(ctx)
 	go s.runSubscriptionExpiryJob(ctx)
 	go s.runCleanupJob(ctx)
@@ -95,6 +99,46 @@ func (s *Scheduler) runDailyVoteJob(ctx context.Context) {
 			s.logger.Info().
 				Time("next_run", nextRun).
 				Msg("Daily vote job rescheduled")
+		}
+	}
+}
+
+// runWeeklyTicketJob runs every Wednesday at 00:00 UTC (3:00 MSK)
+func (s *Scheduler) runWeeklyTicketJob(ctx context.Context) {
+	defer s.wg.Done()
+
+	nextRun := getNextUTCWeekdayMidnight(time.Wednesday)
+	timer := time.NewTimer(time.Until(nextRun))
+
+	s.logger.Info().
+		Time("next_run", nextRun).
+		Msg("Weekly ticket grant job scheduled")
+
+	for {
+		select {
+		case <-s.stopCh:
+			timer.Stop()
+			return
+		case <-timer.C:
+			s.logger.Info().Msg("Running weekly ticket grant job")
+
+			if s.weeklyTicketJob == nil {
+				// Build repos needed for the job (same DB)
+				subRepo := repository.NewSubscriptionRepository(s.db)
+				ticketRepo := repository.NewTicketRepository(s.db)
+				s.weeklyTicketJob = NewWeeklyTicketGrantJob(s.db, subRepo, ticketRepo, s.logger)
+			}
+
+			if err := s.weeklyTicketJob.Run(ctx); err != nil {
+				s.logger.Error().Err(err).Msg("Weekly ticket grant job failed")
+			}
+
+			nextRun = getNextUTCWeekdayMidnight(time.Wednesday)
+			timer.Reset(time.Until(nextRun))
+
+			s.logger.Info().
+				Time("next_run", nextRun).
+				Msg("Weekly ticket grant job rescheduled")
 		}
 	}
 }
@@ -183,6 +227,13 @@ func (s *Scheduler) runCleanupTasks(ctx context.Context) {
 	if err != nil {
 		s.logger.Error().Err(err).Msg("Failed to clean daily vote grant logs")
 	}
+
+	// Clean up old weekly ticket grant logs (keep last 90 days)
+	_, err = s.db.ExecContext(ctx,
+		`DELETE FROM weekly_ticket_grants WHERE grant_date < CURRENT_DATE - INTERVAL '90 days'`)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("Failed to clean weekly ticket grant logs")
+	}
 	
 	s.logger.Info().Msg("Cleanup tasks completed")
 }
@@ -200,9 +251,36 @@ func (s *Scheduler) getNextUTCMidnight() time.Time {
 	return next
 }
 
+// getNextUTCWeekdayMidnight returns the next occurrence of the given weekday at 00:00 UTC.
+func getNextUTCWeekdayMidnight(day time.Weekday) time.Time {
+	now := time.Now().UTC()
+	todayMidnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+
+	// days until target weekday
+	delta := (int(day) - int(now.Weekday()) + 7) % 7
+	next := todayMidnight.AddDate(0, 0, delta)
+	if now.After(next) {
+		next = next.AddDate(0, 0, 7)
+	}
+	return next
+}
+
 // RunDailyVoteJobNow runs the daily vote job immediately (for admin/testing)
 func (s *Scheduler) RunDailyVoteJobNow(ctx context.Context) error {
+	if s.dailyVoteJob == nil {
+		s.dailyVoteJob = NewDailyVoteGrantJob(s.db, s.ticketService, s.logger)
+	}
 	return s.dailyVoteJob.Run(ctx)
+}
+
+// RunWeeklyTicketJobNow runs the weekly ticket grant immediately (for admin/testing).
+func (s *Scheduler) RunWeeklyTicketJobNow(ctx context.Context) error {
+	if s.weeklyTicketJob == nil {
+		subRepo := repository.NewSubscriptionRepository(s.db)
+		ticketRepo := repository.NewTicketRepository(s.db)
+		s.weeklyTicketJob = NewWeeklyTicketGrantJob(s.db, subRepo, ticketRepo, s.logger)
+	}
+	return s.weeklyTicketJob.Run(ctx)
 }
 
 // RunVotingWinnerJobNow runs the voting winner job immediately (for admin/testing)
@@ -212,5 +290,17 @@ func (s *Scheduler) RunVotingWinnerJobNow(ctx context.Context) error {
 
 // GetDailyGrantStatus returns the status of the last daily vote grant
 func (s *Scheduler) GetDailyGrantStatus(ctx context.Context) (*DailyGrantStatus, error) {
+	if s.dailyVoteJob == nil {
+		s.dailyVoteJob = NewDailyVoteGrantJob(s.db, s.ticketService, s.logger)
+	}
 	return s.dailyVoteJob.GetLastGrantStatus(ctx)
+}
+
+func (s *Scheduler) GetWeeklyGrantStatus(ctx context.Context) (*WeeklyGrantStatus, error) {
+	if s.weeklyTicketJob == nil {
+		subRepo := repository.NewSubscriptionRepository(s.db)
+		ticketRepo := repository.NewTicketRepository(s.db)
+		s.weeklyTicketJob = NewWeeklyTicketGrantJob(s.db, subRepo, ticketRepo, s.logger)
+	}
+	return s.weeklyTicketJob.GetLastGrantStatus(ctx)
 }

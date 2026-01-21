@@ -46,7 +46,11 @@ func main() {
 	log.Info().Msg("Database migrations completed")
 
 	// Создаём роутер
-	router := routes.NewRouter(db, cfg, log)
+	router, scheduler := routes.NewRouter(db, cfg, log)
+
+	// Start background jobs (daily votes at 00:00 UTC, etc.)
+	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
+	scheduler.Start(schedulerCtx)
 
 	// Создаём HTTP сервер
 	server := &http.Server{
@@ -74,6 +78,10 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	// Stop scheduler first (so jobs won't run during shutdown)
+	schedulerCancel()
+	scheduler.Stop()
 
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatal().Err(err).Msg("Server forced to shutdown")

@@ -45,6 +45,7 @@ services:
       DATABASE_URL: postgres://novels:novels_dev_password@postgres:5432/novels?sslmode=disable
       REDIS_URL: redis://redis:6379
       JWT_SECRET: dev_jwt_secret_change_in_production_32chars
+      DAILY_VOTES_ENDPOINT_PASSWORD: "12345"
       UPLOAD_DIR: /app/uploads
       PORT: 8080
       ENV: development
