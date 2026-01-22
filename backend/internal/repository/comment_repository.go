@@ -23,10 +23,10 @@ func NewCommentRepository(db *sqlx.DB) *CommentRepository {
 func (r *CommentRepository) Create(ctx context.Context, comment *models.Comment) error {
 	query := `
 		INSERT INTO comments (
-			id, parent_id, root_id, depth, target_type, target_id,
-			user_id, body, is_deleted, is_spoiler, created_at, updated_at
+			id, parent_id, root_id, depth, target_type, target_id, anchor,
+			user_id, body, content, is_deleted, is_spoiler, created_at, updated_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, false, $9, NOW(), NOW()
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, $11, NOW(), NOW()
 		)
 		RETURNING id, created_at, updated_at`
 
@@ -37,8 +37,10 @@ func (r *CommentRepository) Create(ctx context.Context, comment *models.Comment)
 		comment.Depth,
 		comment.TargetType,
 		comment.TargetID,
+		comment.Anchor,
 		comment.UserID,
 		comment.Body,
+		comment.Body, // legacy column (NOT NULL in older schema)
 		comment.IsSpoiler,
 	).Scan(&comment.ID, &comment.CreatedAt, &comment.UpdatedAt)
 }
@@ -49,7 +51,7 @@ func (r *CommentRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.
 	query := `
 		SELECT 
 			c.id, c.parent_id, c.root_id, c.depth,
-			c.target_type, c.target_id, c.user_id, c.body,
+			c.target_type, c.target_id, c.anchor, c.user_id, c.body,
 			c.is_deleted, c.is_spoiler,
 			c.likes_count, c.dislikes_count, c.replies_count,
 			c.created_at, c.updated_at
@@ -72,20 +74,31 @@ func (r *CommentRepository) GetByIDWithUser(ctx context.Context, id uuid.UUID, v
 	query := `
 		SELECT 
 			c.id, c.parent_id, c.root_id, c.depth,
-			c.target_type, c.target_id, c.user_id, c.body,
+			c.target_type, c.target_id, c.anchor, c.user_id, c.body,
 			c.is_deleted, c.is_spoiler,
 			c.likes_count, c.dislikes_count, c.replies_count,
 			c.created_at, c.updated_at,
 			u.id as "user.id",
 			COALESCE(up.display_name, u.email) as "user.display_name",
-			up.avatar_url as "user.avatar_url",
+			CASE WHEN up.avatar_key IS NOT NULL THEN '/uploads/' || up.avatar_key ELSE NULL END as "user.avatar_url",
 			COALESCE(ux.level, 1) as "user.level",
 			COALESCE(ur.role, 'user') as "user.role"
 		FROM comments c
 		JOIN users u ON c.user_id = u.id
 		LEFT JOIN user_profiles up ON u.id = up.user_id
 		LEFT JOIN user_xp ux ON u.id = ux.user_id
-		LEFT JOIN user_roles ur ON u.id = ur.user_id
+		LEFT JOIN LATERAL (
+			SELECT role
+			FROM user_roles
+			WHERE user_id = u.id
+			ORDER BY CASE role
+				WHEN 'admin' THEN 4
+				WHEN 'moderator' THEN 3
+				WHEN 'premium' THEN 2
+				ELSE 1
+			END DESC
+			LIMIT 1
+		) ur ON true
 		WHERE c.id = $1`
 
 	rows, err := r.db.QueryxContext(ctx, query, id)
@@ -103,7 +116,7 @@ func (r *CommentRepository) GetByIDWithUser(ctx context.Context, id uuid.UUID, v
 
 	err = rows.Scan(
 		&comment.ID, &comment.ParentID, &comment.RootID, &comment.Depth,
-		&comment.TargetType, &comment.TargetID, &comment.UserID, &comment.Body,
+		&comment.TargetType, &comment.TargetID, &comment.Anchor, &comment.UserID, &comment.Body,
 		&comment.IsDeleted, &comment.IsSpoiler,
 		&comment.LikesCount, &comment.DislikesCount, &comment.RepliesCount,
 		&comment.CreatedAt, &comment.UpdatedAt,
@@ -134,11 +147,29 @@ func (r *CommentRepository) List(ctx context.Context, filter models.CommentsFilt
 		JOIN users u ON c.user_id = u.id
 		LEFT JOIN user_profiles up ON u.id = up.user_id
 		LEFT JOIN user_xp ux ON u.id = ux.user_id
-		LEFT JOIN user_roles ur ON u.id = ur.user_id
+		LEFT JOIN LATERAL (
+			SELECT role
+			FROM user_roles
+			WHERE user_id = u.id
+			ORDER BY CASE role
+				WHEN 'admin' THEN 4
+				WHEN 'moderator' THEN 3
+				WHEN 'premium' THEN 2
+				ELSE 1
+			END DESC
+			LIMIT 1
+		) ur ON true
 		WHERE c.target_type = $1 AND c.target_id = $2`
 
 	args := []interface{}{filter.TargetType, filter.TargetID}
 	argIndex := 3
+
+	// Filter by anchor (nil = any, set = exact match, including replies if parent_id is set)
+	if filter.Anchor != nil {
+		baseQuery += fmt.Sprintf(" AND c.anchor = $%d", argIndex)
+		args = append(args, *filter.Anchor)
+		argIndex++
+	}
 
 	// Filter by parent (nil = root comments)
 	if filter.ParentID == nil {
@@ -180,13 +211,13 @@ func (r *CommentRepository) List(ctx context.Context, filter models.CommentsFilt
 	selectQuery := fmt.Sprintf(`
 		SELECT 
 			c.id, c.parent_id, c.root_id, c.depth,
-			c.target_type, c.target_id, c.user_id, c.body,
+			c.target_type, c.target_id, c.anchor, c.user_id, c.body,
 			c.is_deleted, c.is_spoiler,
 			c.likes_count, c.dislikes_count, c.replies_count,
 			c.created_at, c.updated_at,
 			u.id as user_id,
 			COALESCE(up.display_name, u.email) as user_display_name,
-			up.avatar_url as user_avatar_url,
+			CASE WHEN up.avatar_key IS NOT NULL THEN '/uploads/' || up.avatar_key ELSE NULL END as user_avatar_url,
 			COALESCE(ux.level, 1) as user_level,
 			COALESCE(ur.role, 'user') as user_role
 		%s
@@ -211,7 +242,7 @@ func (r *CommentRepository) List(ctx context.Context, filter models.CommentsFilt
 
 		err := rows.Scan(
 			&comment.ID, &comment.ParentID, &comment.RootID, &comment.Depth,
-			&comment.TargetType, &comment.TargetID, &comment.UserID, &comment.Body,
+			&comment.TargetType, &comment.TargetID, &comment.Anchor, &comment.UserID, &comment.Body,
 			&comment.IsDeleted, &comment.IsSpoiler,
 			&comment.LikesCount, &comment.DislikesCount, &comment.RepliesCount,
 			&comment.CreatedAt, &comment.UpdatedAt,
@@ -265,7 +296,7 @@ func (r *CommentRepository) List(ctx context.Context, filter models.CommentsFilt
 func (r *CommentRepository) Update(ctx context.Context, id uuid.UUID, body string, isSpoiler bool) error {
 	query := `
 		UPDATE comments 
-		SET body = $2, is_spoiler = $3, updated_at = NOW()
+		SET body = $2, content = $2, is_spoiler = $3, updated_at = NOW()
 		WHERE id = $1 AND is_deleted = false`
 
 	result, err := r.db.ExecContext(ctx, query, id, body, isSpoiler)
@@ -285,7 +316,7 @@ func (r *CommentRepository) Update(ctx context.Context, id uuid.UUID, body strin
 func (r *CommentRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `
 		UPDATE comments 
-		SET is_deleted = true, body = '[удалено]', updated_at = NOW()
+		SET is_deleted = true, body = '[удалено]', content = '[удалено]', updated_at = NOW()
 		WHERE id = $1`
 
 	_, err := r.db.ExecContext(ctx, query, id)
@@ -325,25 +356,11 @@ func (r *CommentRepository) Vote(ctx context.Context, commentID, userID uuid.UUI
 			if err != nil {
 				return err
 			}
-
-			// Update counts
-			if value == 1 {
-				_, err = tx.ExecContext(ctx, `UPDATE comments SET likes_count = likes_count - 1 WHERE id = $1`, commentID)
-			} else {
-				_, err = tx.ExecContext(ctx, `UPDATE comments SET dislikes_count = dislikes_count - 1 WHERE id = $1`, commentID)
-			}
 		} else {
 			// Update vote
 			_, err = tx.ExecContext(ctx, `UPDATE comment_votes SET value = $3 WHERE comment_id = $1 AND user_id = $2`, commentID, userID, value)
 			if err != nil {
 				return err
-			}
-
-			// Update counts (swap)
-			if value == 1 {
-				_, err = tx.ExecContext(ctx, `UPDATE comments SET likes_count = likes_count + 1, dislikes_count = dislikes_count - 1 WHERE id = $1`, commentID)
-			} else {
-				_, err = tx.ExecContext(ctx, `UPDATE comments SET likes_count = likes_count - 1, dislikes_count = dislikes_count + 1 WHERE id = $1`, commentID)
 			}
 		}
 	} else {
@@ -352,17 +369,6 @@ func (r *CommentRepository) Vote(ctx context.Context, commentID, userID uuid.UUI
 		if err != nil {
 			return err
 		}
-
-		// Update counts
-		if value == 1 {
-			_, err = tx.ExecContext(ctx, `UPDATE comments SET likes_count = likes_count + 1 WHERE id = $1`, commentID)
-		} else {
-			_, err = tx.ExecContext(ctx, `UPDATE comments SET dislikes_count = dislikes_count + 1 WHERE id = $1`, commentID)
-		}
-	}
-
-	if err != nil {
-		return err
 	}
 
 	return tx.Commit()

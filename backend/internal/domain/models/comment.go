@@ -25,6 +25,7 @@ type Comment struct {
 	
 	TargetType TargetType `json:"targetType" db:"target_type"`
 	TargetID   uuid.UUID  `json:"targetId" db:"target_id"`
+	Anchor     *string    `json:"anchor,omitempty" db:"anchor"`
 	
 	UserID    uuid.UUID `json:"userId" db:"user_id"`
 	Body      string    `json:"body" db:"body"`
@@ -77,6 +78,7 @@ type CreateCommentRequest struct {
 	TargetType TargetType `json:"targetType" validate:"required,oneof=novel chapter news profile"`
 	TargetID   string     `json:"targetId" validate:"required,uuid"`
 	ParentID   *string    `json:"parentId,omitempty" validate:"omitempty,uuid"`
+	Anchor     *string    `json:"anchor,omitempty" validate:"omitempty,max=200"`
 	Body       string     `json:"body" validate:"required,min=1,max=10000"`
 	IsSpoiler  bool       `json:"isSpoiler"`
 }
@@ -102,6 +104,7 @@ type CommentsFilter struct {
 	TargetType TargetType `json:"targetType"`
 	TargetID   uuid.UUID  `json:"targetId"`
 	ParentID   *uuid.UUID `json:"parentId,omitempty"` // nil = root comments only
+	Anchor     *string    `json:"anchor,omitempty"`
 	UserID     *uuid.UUID `json:"userId,omitempty"`
 	Sort       string     `json:"sort"` // newest, oldest, top
 	Page       int        `json:"page"`

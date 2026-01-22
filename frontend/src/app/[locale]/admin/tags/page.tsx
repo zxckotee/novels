@@ -11,19 +11,19 @@ import { useAdminTags, useDeleteTag } from '@/lib/api/hooks/useAdminGenresTags';
 export default function AdminTagsPage() {
   const locale = useLocale();
   const router = useRouter();
-  const { isAuthenticated, user, isLoading } = useAuthStore();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   
   const hasAccess = isAuthenticated && isAdmin(user);
 
   useEffect(() => {
-    if (!isLoading && !hasAccess) {
+    if (!authLoading && !hasAccess) {
       router.replace(`/${locale}`);
     }
-  }, [isLoading, hasAccess, router, locale]);
+  }, [authLoading, hasAccess, router, locale]);
 
-  const { data: tagsData, isLoading } = useAdminTags({
+  const { data: tagsData, isLoading: tagsLoading } = useAdminTags({
     query: searchQuery,
     lang: locale,
     page,
@@ -42,7 +42,7 @@ export default function AdminTagsPage() {
     }
   };
 
-  if (isLoading) return null;
+  if (authLoading) return null;
   if (!hasAccess) return null;
   
   return (
@@ -70,7 +70,7 @@ export default function AdminTagsPage() {
       </div>
       
       <div className="bg-background-secondary rounded-card p-6">
-        {isLoading ? (
+        {tagsLoading ? (
           <div className="text-center py-12"><p className="text-foreground-secondary">Загрузка...</p></div>
         ) : !tagsData || !tagsData.tags || tagsData.tags.length === 0 ? (
           <div className="text-center py-12"><p className="text-foreground-secondary">Теги не найдены</p></div>

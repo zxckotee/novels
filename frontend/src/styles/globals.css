@@ -99,6 +99,11 @@
            focus:border-transparent transition-all;
   }
 
+  .checkbox {
+    @apply h-4 w-4 rounded border border-border-primary bg-background-tertiary
+           text-accent-primary focus:ring-2 focus:ring-accent-primary;
+  }
+
   .input-error {
     @apply input border-accent-danger focus:ring-accent-danger;
   }
@@ -177,6 +182,13 @@
   /* Контейнер */
   .container-custom {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
+@layer base {
+  /* Ensure native <option> dropdown items stay dark where browser allows styling */
+  select option {
+    @apply bg-background-tertiary text-foreground-primary;
   }
 }
 

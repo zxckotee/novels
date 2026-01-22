@@ -43,6 +43,7 @@ func (s *CommentService) Create(ctx context.Context, req models.CreateCommentReq
 		ID:         uuid.New(),
 		TargetType: req.TargetType,
 		TargetID:   targetID,
+		Anchor:     req.Anchor,
 		UserID:     userID,
 		Body:       req.Body,
 		IsSpoiler:  req.IsSpoiler,
@@ -66,6 +67,10 @@ func (s *CommentService) Create(ctx context.Context, req models.CreateCommentReq
 		if parent.IsDeleted {
 			return nil, ErrCommentDeleted
 		}
+		// Prevent cross-target replies
+		if parent.TargetType != req.TargetType || parent.TargetID != targetID {
+			return nil, ErrInvalidParent
+		}
 
 		// Check max depth
 		if parent.Depth >= MaxCommentDepth {
@@ -74,6 +79,8 @@ func (s *CommentService) Create(ctx context.Context, req models.CreateCommentReq
 
 		comment.ParentID = &parentID
 		comment.Depth = parent.Depth + 1
+		// Replies inherit anchor from parent (paragraph-scoped threads)
+		comment.Anchor = parent.Anchor
 
 		// Set root ID
 		if parent.RootID != nil {
@@ -182,9 +189,6 @@ func (s *CommentService) Vote(ctx context.Context, commentID uuid.UUID, userID u
 	}
 	if comment.IsDeleted {
 		return ErrCommentDeleted
-	}
-	if comment.UserID == userID {
-		return ErrCannotVoteOwnComment
 	}
 
 	return s.commentRepo.Vote(ctx, commentID, userID, value)

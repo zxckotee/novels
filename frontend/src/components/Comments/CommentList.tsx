@@ -37,13 +37,28 @@ interface CommentsResponse {
   limit: number;
 }
 
-interface CommentListProps {
-  targetType: 'novel' | 'chapter' | 'news';
-  targetId: string;
-  locale: string;
+function updateCommentTree(
+  comments: Comment[],
+  commentId: string,
+  updater: (c: Comment) => Comment
+): Comment[] {
+  return comments.map((c) => {
+    if (c.id === commentId) return updater(c);
+    if (c.replies?.length) {
+      return { ...c, replies: updateCommentTree(c.replies, commentId, updater) };
+    }
+    return c;
+  });
 }
 
-export function CommentList({ targetType, targetId, locale }: CommentListProps) {
+interface CommentListProps {
+  targetType: 'novel' | 'chapter' | 'news' | 'profile';
+  targetId: string;
+  locale: string;
+  anchor?: string;
+}
+
+export function CommentList({ targetType, targetId, locale, anchor }: CommentListProps) {
   const t = useTranslations('comments');
   const { isAuthenticated } = useAuthStore();
   const queryClient = useQueryClient();
@@ -57,18 +72,20 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
 
   // Fetch comments
   const { data, isLoading, error } = useQuery<CommentsResponse>({
-    queryKey: ['comments', targetType, targetId, page, sort],
+    queryKey: ['comments', targetType, targetId, anchor, page, sort],
     queryFn: async () => {
       const response = await apiClient.get('/comments', {
         params: {
           target_type: targetType,
           target_id: targetId,
+          anchor,
           page,
           limit: 20,
           sort,
         },
       });
-      return response.data;
+      // Backend wraps responses as { data: ..., meta: ... }
+      return (response.data as any)?.data ?? response.data;
     },
   });
 
@@ -79,6 +96,7 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
         targetType,
         targetId,
         parentId: data.parentId,
+        anchor,
         body: data.body,
         isSpoiler: data.isSpoiler,
       });
@@ -97,15 +115,63 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
     mutationFn: async ({ commentId, value }: { commentId: string; value: number }) => {
       return apiClient.post(`/comments/${commentId}/vote`, { value });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments', targetType, targetId] });
+    onMutate: async ({ commentId, value }) => {
+      // Keep replies visible: update cache instead of invalidating/refetching.
+      await queryClient.cancelQueries({ queryKey: ['comments', targetType, targetId] });
+
+      const snapshots = queryClient.getQueriesData<CommentsResponse>({
+        queryKey: ['comments', targetType, targetId],
+      });
+
+      for (const [key, old] of snapshots) {
+        if (!old) continue;
+
+        const next = {
+          ...old,
+          comments: updateCommentTree(old.comments, commentId, (c) => {
+            const prevVote = c.userVote ?? 0;
+            const nextVote = prevVote === value ? 0 : value;
+
+            let likes = c.likesCount;
+            let dislikes = c.dislikesCount;
+
+            // Remove previous vote effect
+            if (prevVote === 1) likes = Math.max(0, likes - 1);
+            if (prevVote === -1) dislikes = Math.max(0, dislikes - 1);
+
+            // Apply next vote effect
+            if (nextVote === 1) likes += 1;
+            if (nextVote === -1) dislikes += 1;
+
+            const updated: Comment = { ...c, likesCount: likes, dislikesCount: dislikes };
+            if (nextVote === 0) {
+              delete (updated as any).userVote;
+            } else {
+              (updated as any).userVote = nextVote;
+            }
+            return updated;
+          }),
+        };
+
+        queryClient.setQueryData(key, next);
+      }
+
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      // Roll back optimistic update
+      if (ctx?.snapshots) {
+        for (const [key, data] of ctx.snapshots) {
+          queryClient.setQueryData(key, data);
+        }
+      }
     },
   });
 
   // Edit mutation
   const editMutation = useMutation({
-    mutationFn: async ({ commentId, body }: { commentId: string; body: string }) => {
-      return apiClient.put(`/comments/${commentId}`, { body });
+    mutationFn: async ({ commentId, body, isSpoiler }: { commentId: string; body: string; isSpoiler: boolean }) => {
+      return apiClient.put(`/comments/${commentId}`, { body, isSpoiler });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', targetType, targetId] });
@@ -143,8 +209,8 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
     voteMutation.mutate({ commentId, value });
   }, [voteMutation]);
 
-  const handleEdit = useCallback((commentId: string, body: string) => {
-    editMutation.mutate({ commentId, body });
+  const handleEdit = useCallback((commentId: string, body: string, isSpoiler: boolean) => {
+    editMutation.mutate({ commentId, body, isSpoiler });
   }, [editMutation]);
 
   const handleDelete = useCallback((commentId: string) => {
@@ -165,15 +231,16 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
     const response = await apiClient.get(`/comments/${parentId}/replies`, {
       params: { limit: 50 },
     });
+    const replies = (response.data as any)?.data ?? response.data;
     // Update the comment in cache with replies
     queryClient.setQueryData<CommentsResponse>(
-      ['comments', targetType, targetId, page, sort],
+      ['comments', targetType, targetId, anchor, page, sort],
       (old) => {
         if (!old) return old;
         const updateReplies = (comments: Comment[]): Comment[] => {
           return comments.map((c) => {
             if (c.id === parentId) {
-              return { ...c, replies: response.data };
+              return { ...c, replies };
             }
             if (c.replies) {
               return { ...c, replies: updateReplies(c.replies) };
@@ -184,13 +251,13 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
         return { ...old, comments: updateReplies(old.comments) };
       }
     );
-  }, [queryClient, targetType, targetId, page, sort]);
+  }, [queryClient, targetType, targetId, anchor, page, sort]);
 
   return (
     <div className="comments-section">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h3 className="flex items-center gap-2 text-xl font-bold text-text-primary">
+        <h3 className="flex items-center gap-2 text-xl font-bold text-foreground-primary">
           <MessageCircle className="w-6 h-6" />
           {t('title')} {data?.totalCount ? `(${data.totalCount})` : ''}
         </h3>
@@ -199,7 +266,7 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as typeof sort)}
-          className="bg-bg-secondary border border-bg-tertiary rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+          className="input w-auto text-sm"
         >
           <option value="newest">{t('sortNewest')}</option>
           <option value="oldest">{t('sortOldest')}</option>
@@ -214,23 +281,23 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder={t('placeholder')}
-            className="w-full p-4 bg-bg-secondary border border-bg-tertiary rounded-lg resize-none focus:outline-none focus:border-accent text-text-primary placeholder:text-text-tertiary"
+            className="input min-h-[96px] resize-none"
             rows={3}
           />
           <div className="flex items-center justify-between mt-2">
-            <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-foreground-secondary cursor-pointer">
               <input
                 type="checkbox"
                 checked={isSpoiler}
                 onChange={(e) => setIsSpoiler(e.target.checked)}
-                className="rounded border-bg-tertiary text-accent focus:ring-accent"
+                className="checkbox"
               />
               {t('markSpoiler')}
             </label>
             <button
               onClick={handleSubmitComment}
               disabled={!newComment.trim() || createMutation.isPending}
-              className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="btn-primary flex items-center gap-2"
             >
               {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               {t('submit')}
@@ -238,19 +305,19 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
           </div>
         </div>
       ) : (
-        <div className="mb-8 p-4 bg-bg-secondary rounded-lg text-center text-text-secondary">
+        <div className="mb-8 p-4 bg-background-secondary rounded-lg text-center text-foreground-secondary">
           {t('loginToComment')}
         </div>
       )}
 
       {/* Reply form */}
       {replyingTo && (
-        <div className="mb-8 p-4 bg-bg-secondary rounded-lg">
+        <div className="mb-8 p-4 bg-background-secondary rounded-lg">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-text-secondary">{t('replyingTo')}</span>
+            <span className="text-sm text-foreground-secondary">{t('replyingTo')}</span>
             <button
               onClick={() => setReplyingTo(null)}
-              className="text-sm text-text-tertiary hover:text-text-primary"
+              className="text-sm text-foreground-muted hover:text-foreground-primary"
             >
               {t('cancel')}
             </button>
@@ -259,7 +326,7 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             placeholder={t('replyPlaceholder')}
-            className="w-full p-3 bg-bg-primary border border-bg-tertiary rounded-lg resize-none focus:outline-none focus:border-accent text-text-primary"
+            className="input resize-none"
             rows={2}
             autoFocus
           />
@@ -267,7 +334,7 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
             <button
               onClick={handleSubmitReply}
               disabled={!replyText.trim() || createMutation.isPending}
-              className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 flex items-center gap-2"
+              className="btn-primary flex items-center gap-2"
             >
               {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               {t('submitReply')}
@@ -279,14 +346,14 @@ export function CommentList({ targetType, targetId, locale }: CommentListProps) 
       {/* Comments list */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <Loader2 className="w-8 h-8 animate-spin text-accent-primary" />
         </div>
       ) : error ? (
         <div className="text-center py-12 text-red-500">
           {t('loadError')}
         </div>
-      ) : data?.comments.length === 0 ? (
-        <div className="text-center py-12 text-text-tertiary">
+      ) : (data?.comments?.length ?? 0) === 0 ? (
+        <div className="text-center py-12 text-foreground-muted">
           {t('noComments')}
         </div>
       ) : (

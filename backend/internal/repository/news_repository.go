@@ -150,7 +150,7 @@ func (r *NewsRepository) List(ctx context.Context, params models.NewsListParams)
 
 	// Main query - pinned first, then by date
 	query := fmt.Sprintf(`
-		SELECT id, slug, title, summary, cover_url, category, is_pinned, views_count, comments_count, published_at
+		SELECT id, slug, title, summary, cover_url, category, is_pinned, views_count, comments_count, published_at, author_id
 		FROM news_posts
 		%s
 		ORDER BY is_pinned DESC, published_at DESC
@@ -171,7 +171,7 @@ func (r *NewsRepository) List(ctx context.Context, params models.NewsListParams)
 func (r *NewsRepository) GetLatest(ctx context.Context, limit int) ([]models.NewsCard, error) {
 	var news []models.NewsCard
 	query := `
-		SELECT id, slug, title, summary, cover_url, category, is_pinned, views_count, comments_count, published_at
+		SELECT id, slug, title, summary, cover_url, category, is_pinned, views_count, comments_count, published_at, author_id
 		FROM news_posts
 		WHERE is_published = true
 		ORDER BY is_pinned DESC, published_at DESC
@@ -262,7 +262,7 @@ func (r *NewsRepository) GetLocalizedNews(ctx context.Context, slug string, lang
 func (r *NewsRepository) GetPinnedNews(ctx context.Context) ([]models.NewsCard, error) {
 	var news []models.NewsCard
 	query := `
-		SELECT id, slug, title, summary, cover_url, category, is_pinned, views_count, comments_count, published_at
+		SELECT id, slug, title, summary, cover_url, category, is_pinned, views_count, comments_count, published_at, author_id
 		FROM news_posts
 		WHERE is_published = true AND is_pinned = true
 		ORDER BY published_at DESC`

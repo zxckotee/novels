@@ -21,6 +21,7 @@ import {
 import { useNovel } from '@/lib/api/hooks/useNovels';
 import { useChapters } from '@/lib/api/hooks/useChapters';
 import { useAuthStore } from '@/store/auth';
+import { CommentList } from '@/components/Comments/CommentList';
 
 interface NovelPageClientProps {
   slug: string;
@@ -348,10 +349,7 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
         {activeTab === 'comments' && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Комментарии</h2>
-            <div className="text-center py-12 text-foreground-secondary">
-              <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Комментарии будут доступны в следующем обновлении</p>
-            </div>
+            <CommentList targetType="novel" targetId={novel.id} locale={locale} />
           </div>
         )}
       </div>

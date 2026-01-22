@@ -24,6 +24,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { hasRole } from '@/store/auth';
 import { WalletCompact } from '@/components/Wallet/WalletCompact';
+import { CommentList } from '@/components/Comments/CommentList';
 
 interface UserSubscriptionInfo {
   hasActiveSubscription: boolean;
@@ -342,6 +343,17 @@ export default function ProfilePageClient() {
           </div>
         )}
       </div>
+
+      {/* Comments (end of profile page) */}
+      {authUser?.id && (
+        <div className="mt-10 pt-8 border-t border-background-tertiary">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <MessageSquare className="w-5 h-5" />
+            Комментарии
+          </h2>
+          <CommentList targetType="profile" targetId={authUser.id} locale={locale} />
+        </div>
+      )}
     </div>
   );
 }

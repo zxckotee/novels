@@ -123,7 +123,7 @@ func (r *XPRepository) GetLeaderboard(ctx context.Context, limit int) ([]models.
 		SELECT 
 			ux.user_id,
 			COALESCE(up.display_name, u.email) as display_name,
-			up.avatar_url,
+			CASE WHEN up.avatar_key IS NOT NULL THEN '/uploads/' || up.avatar_key ELSE NULL END as avatar_url,
 			ux.level,
 			ux.xp_total
 		FROM user_xp ux

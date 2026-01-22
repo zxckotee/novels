@@ -244,7 +244,7 @@ func (s *NewsService) List(ctx context.Context, params models.NewsListParams) (*
 
 	// Load authors
 	for i := range news {
-		user, _ := s.userRepo.GetByID(ctx, news[i].ID) // TODO: optimize with batch load
+		user, _ := s.userRepo.GetByID(ctx, news[i].AuthorID) // TODO: optimize with batch load
 		if user != nil {
 			var avatarURL *string
 			if user.Profile.AvatarKey != nil {
@@ -272,7 +272,28 @@ func (s *NewsService) List(ctx context.Context, params models.NewsListParams) (*
 
 // GetLatest gets latest news for homepage
 func (s *NewsService) GetLatest(ctx context.Context, limit int) ([]models.NewsCard, error) {
-	return s.newsRepo.GetLatest(ctx, limit)
+	news, err := s.newsRepo.GetLatest(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range news {
+		user, _ := s.userRepo.GetByID(ctx, news[i].AuthorID)
+		if user != nil {
+			var avatarURL *string
+			if user.Profile.AvatarKey != nil {
+				url := "/uploads/" + *user.Profile.AvatarKey
+				avatarURL = &url
+			}
+			news[i].Author = &models.UserPublic{
+				ID:          user.ID,
+				DisplayName: user.Profile.DisplayName,
+				AvatarURL:   avatarURL,
+			}
+		}
+	}
+
+	return news, nil
 }
 
 // SetLocalization adds or updates a news localization
@@ -316,5 +337,26 @@ func (s *NewsService) SetPinned(ctx context.Context, id uuid.UUID, pinned bool) 
 
 // GetPinned gets pinned news
 func (s *NewsService) GetPinned(ctx context.Context) ([]models.NewsCard, error) {
-	return s.newsRepo.GetPinnedNews(ctx)
+	news, err := s.newsRepo.GetPinnedNews(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range news {
+		user, _ := s.userRepo.GetByID(ctx, news[i].AuthorID)
+		if user != nil {
+			var avatarURL *string
+			if user.Profile.AvatarKey != nil {
+				url := "/uploads/" + *user.Profile.AvatarKey
+				avatarURL = &url
+			}
+			news[i].Author = &models.UserPublic{
+				ID:          user.ID,
+				DisplayName: user.Profile.DisplayName,
+				AvatarURL:   avatarURL,
+			}
+		}
+	}
+
+	return news, nil
 }

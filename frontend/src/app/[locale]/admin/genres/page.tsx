@@ -11,19 +11,19 @@ import { useAdminGenres, useDeleteGenre } from '@/lib/api/hooks/useAdminGenresTa
 export default function AdminGenresPage() {
   const locale = useLocale();
   const router = useRouter();
-  const { isAuthenticated, user, isLoading } = useAuthStore();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   
   const hasAccess = isAuthenticated && isAdmin(user);
 
   useEffect(() => {
-    if (!isLoading && !hasAccess) {
+    if (!authLoading && !hasAccess) {
       router.replace(`/${locale}`);
     }
-  }, [isLoading, hasAccess, router, locale]);
+  }, [authLoading, hasAccess, router, locale]);
 
-  const { data: genresData, isLoading } = useAdminGenres({
+  const { data: genresData, isLoading: genresLoading } = useAdminGenres({
     query: searchQuery,
     lang: locale,
     page,
@@ -42,7 +42,7 @@ export default function AdminGenresPage() {
     }
   };
 
-  if (isLoading) return null;
+  if (authLoading) return null;
   if (!hasAccess) return null;
   
   return (
@@ -70,7 +70,7 @@ export default function AdminGenresPage() {
       </div>
       
       <div className="bg-background-secondary rounded-card p-6">
-        {isLoading ? (
+        {genresLoading ? (
           <div className="text-center py-12"><p className="text-foreground-secondary">Загрузка...</p></div>
         ) : !genresData || !genresData.genres || genresData.genres.length === 0 ? (
           <div className="text-center py-12"><p className="text-foreground-secondary">Жанры не найдены</p></div>

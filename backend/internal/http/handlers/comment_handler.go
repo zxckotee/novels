@@ -38,6 +38,7 @@ func (h *CommentHandler) List(w http.ResponseWriter, r *http.Request) {
 	targetType := r.URL.Query().Get("target_type")
 	targetIDStr := r.URL.Query().Get("target_id")
 	parentIDStr := r.URL.Query().Get("parent_id")
+	anchor := r.URL.Query().Get("anchor")
 	sort := r.URL.Query().Get("sort")
 	
 	if targetType == "" || targetIDStr == "" {
@@ -57,6 +58,10 @@ func (h *CommentHandler) List(w http.ResponseWriter, r *http.Request) {
 		Sort:       sort,
 		Page:       parseIntQuery(r, "page", 1),
 		Limit:      parseIntQuery(r, "limit", 20),
+	}
+
+	if anchor != "" {
+		filter.Anchor = &anchor
 	}
 	
 	if parentIDStr != "" {

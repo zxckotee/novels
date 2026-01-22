@@ -17,19 +17,19 @@ import { useAdminChapters, useDeleteChapter } from '@/lib/api/hooks/useAdminChap
 export default function AdminChaptersPage() {
   const locale = useLocale();
   const router = useRouter();
-  const { isAuthenticated, user, isLoading } = useAuthStore();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   
   const hasAccess = isAuthenticated && isAdmin(user);
 
   useEffect(() => {
-    if (!isLoading && !hasAccess) {
+    if (!authLoading && !hasAccess) {
       router.replace(`/${locale}`);
     }
-  }, [isLoading, hasAccess, router, locale]);
+  }, [authLoading, hasAccess, router, locale]);
 
-  const { data: chaptersData, isLoading } = useAdminChapters({
+  const { data: chaptersData, isLoading: chaptersLoading } = useAdminChapters({
     page,
     limit: 50,
   });
@@ -46,7 +46,7 @@ export default function AdminChaptersPage() {
     }
   };
 
-  if (isLoading) return null;
+  if (authLoading) return null;
   if (!hasAccess) return null;
 
   // Filter chapters by search query (slug or title)
@@ -95,7 +95,7 @@ export default function AdminChaptersPage() {
       
       {/* Content */}
       <div className="bg-background-secondary rounded-card p-6">
-        {isLoading ? (
+        {chaptersLoading ? (
           <div className="text-center py-12">
             <FileText className="w-16 h-16 mx-auto mb-4 text-foreground-muted" />
             <p className="text-foreground-secondary">Загрузка глав...</p>

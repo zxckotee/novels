@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
+import { CommentList } from '@/components/Comments/CommentList';
 
 interface NewsPost {
   id: string;
@@ -214,6 +215,11 @@ export default function NewsDetailClient({ locale, slug }: NewsDetailClientProps
           >
             ← {t('moreNews')}
           </Link>
+        </div>
+
+        {/* Comments */}
+        <div className="mt-12 pt-8 border-t border-gray-800">
+          <CommentList targetType="news" targetId={news.id} locale={locale} />
         </div>
       </div>
     </div>

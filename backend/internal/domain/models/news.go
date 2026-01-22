@@ -64,6 +64,7 @@ type NewsCard struct {
 	ViewsCount    int          `json:"viewsCount" db:"views_count"`
 	CommentsCount int          `json:"commentsCount" db:"comments_count"`
 	PublishedAt   *time.Time   `json:"publishedAt,omitempty" db:"published_at"`
+	AuthorID      uuid.UUID    `json:"authorId" db:"author_id"`
 	Author        *UserPublic  `json:"author,omitempty"`
 }
 

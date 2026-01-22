@@ -17,6 +17,8 @@ import {
 import { useChapter, useSaveProgress } from '@/lib/api/hooks/useChapters';
 import { useAuthStore } from '@/store/auth';
 import { useChapters } from '@/lib/api/hooks/useChapters';
+import { CommentList } from '@/components/Comments/CommentList';
+import { useSearchParams } from 'next/navigation';
 
 interface ReaderPageProps {
   params: {
@@ -58,6 +60,8 @@ export default function ReaderPage({ params }: ReaderPageProps) {
   const { slug, chapterId, locale } = params;
   const t = useTranslations('reader');
   const { isAuthenticated } = useAuthStore();
+  const searchParams = useSearchParams();
+  const commentAnchor = searchParams.get('comment_anchor');
   
   // State
   const [showTOC, setShowTOC] = useState(false);
@@ -242,17 +246,43 @@ export default function ReaderPage({ params }: ReaderPageProps) {
           </div>
         </div>
         
-        {/* Comments Section Placeholder */}
-        <div className="mt-12 pt-8 border-t border-background-tertiary">
+        {/* Comments Section */}
+        <div id="comments" className="mt-12 pt-8 border-t border-background-tertiary">
           <div className="flex items-center gap-2 mb-4">
             <MessageSquare className="w-5 h-5" />
             <h2 className="text-xl font-semibold">Комментарии</h2>
           </div>
-          <div className="text-center py-8 text-foreground-secondary">
-            Комментарии будут доступны в следующем обновлении
-          </div>
+          <CommentList targetType="chapter" targetId={chapter.id} locale={locale} />
         </div>
       </main>
+
+      {/* Paragraph comments modal (opened via ?comment_anchor=p:12#comments) */}
+      {commentAnchor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('comment_anchor');
+            window.history.replaceState({}, '', url.toString());
+          }} />
+          <div className="relative bg-background-secondary rounded-card w-full max-w-3xl max-h-[80vh] overflow-y-auto p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Комментарии к абзацу</h3>
+              <button
+                className="btn-ghost p-2"
+                onClick={() => {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('comment_anchor');
+                  window.history.replaceState({}, '', url.toString());
+                }}
+                aria-label="Закрыть"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <CommentList targetType="chapter" targetId={chapter.id} locale={locale} anchor={commentAnchor} />
+          </div>
+        </div>
+      )}
       
       {/* Fixed Bottom Navigation (Mobile) */}
       <nav className="fixed bottom-0 left-0 right-0 bg-background-secondary/95 backdrop-blur-sm border-t border-background-tertiary md:hidden z-30">
@@ -487,10 +517,16 @@ function formatContent(content: string): string {
   if (!content) return '';
   
   // Split by double newlines or single newlines and wrap in paragraphs
+  let paragraphIndex = 0;
   return content
     .split(/\n\n+/)
     .map(paragraph => paragraph.trim())
     .filter(Boolean)
-    .map(paragraph => `<p class="mb-4">${paragraph.replace(/\n/g, '<br />')}</p>`)
+    .map(paragraph => {
+      const anchor = `p:${paragraphIndex++}`;
+      // Link opens a modal via query param; safe without JS handlers inside HTML.
+      const link = `<a href="?comment_anchor=${encodeURIComponent(anchor)}#comments" class="ml-2 text-sm text-accent-primary hover:underline" title="Комментарии к абзацу">💬</a>`;
+      return `<p id="${anchor.replace(':', '-')}" class="mb-4">${paragraph.replace(/\n/g, '<br />')}${link}</p>`;
+    })
     .join('');
 }
