@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import { isModerator } from '@/store/auth';
 
 interface Proposal {
   id: string;
@@ -16,7 +17,6 @@ interface Proposal {
   status: string;
   title: string;
   altTitles: string[];
-  author: string;
   description: string;
   coverUrl?: string;
   genres: string[];
@@ -48,6 +48,18 @@ interface VotingLeaderboard {
   nextReset: string;
 }
 
+interface TranslationLeaderboard {
+  entries: {
+    targetId: string;
+    status: string;
+    score: number;
+    novelId?: string;
+    proposalId?: string;
+    title: string;
+    coverUrl?: string;
+  }[];
+}
+
 interface VotingStats {
   totalProposals: number;
   activeProposals: number;
@@ -66,16 +78,32 @@ interface WalletInfo {
 export default function VotingPageClient() {
   const t = useTranslations('voting');
   const locale = useLocale();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const queryClient = useQueryClient();
   const [voteAmount, setVoteAmount] = useState<{ [key: string]: number }>({});
-  const [selectedTicketType, setSelectedTicketType] = useState<'daily_vote' | 'translation_ticket'>('daily_vote');
+  const [selectedBoard, setSelectedBoard] = useState<'daily' | 'translation'>('daily');
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
-  // Fetch leaderboard
-  const { data: leaderboard, isLoading } = useQuery<VotingLeaderboard>({
-    queryKey: ['voting-leaderboard'],
+  // Re-render periodically so countdown timers tick down.
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // Fetch daily vote leaderboard
+  const { data: dailyLeaderboard, isLoading: isDailyLoading } = useQuery<VotingLeaderboard>({
+    queryKey: ['voting-leaderboard', 'daily'],
     queryFn: async () => {
       const response = await api.get<VotingLeaderboard>('/voting/leaderboard?limit=20');
+      return response.data;
+    },
+  });
+
+  // Fetch translation vote leaderboard
+  const { data: translationLeaderboard, isLoading: isTranslationLoading } = useQuery<TranslationLeaderboard>({
+    queryKey: ['voting-leaderboard', 'translation'],
+    queryFn: async () => {
+      const response = await api.get<TranslationLeaderboard>('/translation/leaderboard?limit=20');
       return response.data;
     },
   });
@@ -101,17 +129,26 @@ export default function VotingPageClient() {
 
   // Vote mutation
   const voteMutation = useMutation({
-    mutationFn: async ({ proposalId, amount }: { proposalId: string; amount: number }) => {
+    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
+      if (selectedBoard === 'daily') {
       const response = await api.post('/votes', {
-        proposalId,
-        ticketType: selectedTicketType,
+          proposalId: id,
+          ticketType: 'daily_vote',
+          amount,
+        });
+        return response.data;
+      }
+
+      const response = await api.post('/translation-votes', {
+        targetId: id,
         amount,
       });
       return response.data;
     },
     onSuccess: () => {
-      toast.success(selectedTicketType === 'translation_ticket' ? t('investSuccess') : t('voteSuccess'));
-      queryClient.invalidateQueries({ queryKey: ['voting-leaderboard'] });
+      toast.success(selectedBoard === 'translation' ? t('investSuccess') : t('voteSuccess'));
+      queryClient.invalidateQueries({ queryKey: ['voting-leaderboard', 'daily'] });
+      queryClient.invalidateQueries({ queryKey: ['voting-leaderboard', 'translation'] });
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
     },
     onError: (error: any) => {
@@ -120,15 +157,42 @@ export default function VotingPageClient() {
     },
   });
 
-  const handleVote = (proposalId: string) => {
-    const amount = voteAmount[proposalId] || 1;
-    voteMutation.mutate({ proposalId, amount });
+  // Moderator action: remove a proposal from voting (force-reject).
+  const forceRejectMutation = useMutation({
+    mutationFn: async (proposalId: string) => {
+      return api.post(`/moderation/proposals/${proposalId}/force-reject`, { reason: 'bad_cover' });
+    },
+    onSuccess: () => {
+      toast.success('Убрано из голосования');
+      queryClient.invalidateQueries({ queryKey: ['voting-leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['voting-stats'] });
+    },
+    onError: (error: any) => {
+      const backendMessage = error?.response?.data?.error?.message;
+      toast.error(backendMessage || 'Не удалось убрать из голосования');
+    },
+  });
+
+  const handleVote = (id: string) => {
+    const amount = voteAmount[id] || 1;
+    voteMutation.mutate({ id, amount });
   };
 
-  const formatTimeRemaining = (endTime: string) => {
-    const end = new Date(endTime);
-    const now = new Date();
-    const diff = end.getTime() - now.getTime();
+  const parseApiDateMs = (s: string): number => {
+    // Backend uses RFC3339 with up to nanoseconds (e.g. 2026-02-04T22:32:13.259165357Z).
+    // Some JS engines fail to parse >3 fractional digits, so normalize to milliseconds.
+    const raw = (s || '').trim();
+    if (!raw) return NaN;
+    const normalized = raw.replace(/(\.\d{3})\d+Z$/i, '$1Z');
+    const ms = Date.parse(normalized);
+    return Number.isFinite(ms) ? ms : NaN;
+  };
+
+  const formatTimeRemaining = (endTime: string, now: number) => {
+    const endMs = parseApiDateMs(endTime);
+    if (!Number.isFinite(endMs)) return '-';
+    const diff = endMs - now;
 
     if (diff <= 0) return t('pollEnded');
 
@@ -140,8 +204,19 @@ export default function VotingPageClient() {
 
   const getTicketBalance = () => {
     if (!wallet) return 0;
-    return selectedTicketType === 'daily_vote' ? wallet.dailyVotes : wallet.translationTickets;
+    return selectedBoard === 'daily' ? wallet.dailyVotes : wallet.translationTickets;
   };
+
+  const isLoading = selectedBoard === 'daily' ? isDailyLoading : isTranslationLoading;
+  const nextReset = dailyLeaderboard?.nextReset;
+  const nextResetLabel = useMemo(() => {
+    if (!nextReset) return null;
+    return formatTimeRemaining(nextReset, nowMs);
+  }, [nextReset, nowMs]);
+  const topTitle =
+    selectedBoard === 'daily'
+      ? dailyLeaderboard?.entries?.[0]?.proposal?.title
+      : translationLeaderboard?.entries?.[0]?.title;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -191,34 +266,34 @@ export default function VotingPageClient() {
       </div>
 
       {/* Timer */}
-      {leaderboard?.nextReset && (
+      {nextReset && (
         <div className="bg-gradient-to-r from-accent-primary/20 to-accent-secondary/20 rounded-xl p-4 mb-8">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-foreground-secondary">{t('nextWinner')}</p>
               <p className="text-2xl font-bold text-foreground-primary">
-                {formatTimeRemaining(leaderboard.nextReset)}
+                {nextResetLabel}
               </p>
             </div>
             <div className="text-right">
               <p className="text-foreground-secondary">{t('topNovel')}</p>
               <p className="text-lg font-medium text-accent-primary">
-                {leaderboard.entries[0]?.proposal?.title || '-'}
+                {topTitle || '-'}
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Ticket Type Selector */}
+      {/* Board Selector */}
       {isAuthenticated && (
         <div className="bg-background-secondary rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex gap-4">
               <button
-                onClick={() => setSelectedTicketType('daily_vote')}
+                onClick={() => setSelectedBoard('daily')}
                 className={`px-4 py-2 rounded-lg transition-colors ${
-                  selectedTicketType === 'daily_vote'
+                  selectedBoard === 'daily'
                     ? 'bg-status-info text-white'
                     : 'bg-background-tertiary text-foreground-secondary hover:text-foreground-primary'
                 }`}
@@ -226,9 +301,9 @@ export default function VotingPageClient() {
                 {t('dailyVotes')} ({wallet?.dailyVotes ?? 0})
               </button>
               <button
-                onClick={() => setSelectedTicketType('translation_ticket')}
+                onClick={() => setSelectedBoard('translation')}
                 className={`px-4 py-2 rounded-lg transition-colors ${
-                  selectedTicketType === 'translation_ticket'
+                  selectedBoard === 'translation'
                     ? 'bg-status-success text-white'
                     : 'bg-background-tertiary text-foreground-secondary hover:text-foreground-primary'
                 }`}
@@ -259,7 +334,7 @@ export default function VotingPageClient() {
               </div>
             </div>
           ))
-        ) : leaderboard?.entries.length === 0 ? (
+        ) : selectedBoard === 'daily' && (dailyLeaderboard?.entries.length ?? 0) === 0 ? (
           <div className="text-center py-12">
             <p className="text-foreground-muted">{t('noProposals')}</p>
             <Link
@@ -269,8 +344,8 @@ export default function VotingPageClient() {
               {t('beFirst')}
             </Link>
           </div>
-        ) : (
-          leaderboard?.entries.map((entry, index) => (
+        ) : selectedBoard === 'daily' ? (
+          dailyLeaderboard?.entries.map((entry, index) => (
             <div
               key={entry.proposal.id}
               className={`bg-background-secondary rounded-xl p-4 border-2 transition-colors ${
@@ -304,12 +379,17 @@ export default function VotingPageClient() {
                 {/* Cover */}
                 <div className="flex-shrink-0">
                   {entry.proposal.coverUrl ? (
-                    <Image
+                    <img
                       src={entry.proposal.coverUrl}
                       alt={entry.proposal.title}
                       width={80}
                       height={112}
                       className="rounded-lg object-cover"
+                      loading="lazy"
+                      decoding="async"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/placeholder-cover.svg';
+                      }}
                     />
                   ) : (
                     <div className="w-20 h-28 bg-background-tertiary rounded-lg flex items-center justify-center">
@@ -325,9 +405,6 @@ export default function VotingPageClient() {
                   <h3 className="text-lg font-semibold text-foreground-primary truncate">
                     {entry.proposal.title}
                   </h3>
-                  <p className="text-sm text-foreground-secondary">
-                    {t('by')} {entry.proposal.author || t('unknownAuthor')}
-                  </p>
                   <p className="text-sm text-foreground-muted mt-1 line-clamp-2">
                     {entry.proposal.description}
                   </p>
@@ -370,9 +447,21 @@ export default function VotingPageClient() {
                         disabled={voteMutation.isPending || getTicketBalance() < 1}
                         className="btn-primary"
                       >
-                        {voteMutation.isPending ? '...' : (selectedTicketType === 'translation_ticket' ? t('invest') : t('vote'))}
+                        {voteMutation.isPending ? '...' : t('vote')}
                       </button>
                     </div>
+                  )}
+
+                  {isModerator(user) && (
+                    <button
+                      type="button"
+                      onClick={() => forceRejectMutation.mutate(entry.proposal.id)}
+                      disabled={forceRejectMutation.isPending}
+                      className="btn-secondary mt-2"
+                      title="Убрать из голосования"
+                    >
+                      Убрать
+                    </button>
                   )}
                 </div>
               </div>
@@ -403,6 +492,87 @@ export default function VotingPageClient() {
                   </Link>
                 </div>
               )}
+            </div>
+          ))
+        ) : (translationLeaderboard?.entries.length ?? 0) === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-foreground-muted">{t('noProposals')}</p>
+          </div>
+        ) : (
+          translationLeaderboard?.entries.map((entry, index) => (
+            <div
+              key={entry.targetId}
+              className={`bg-background-secondary rounded-xl p-4 border-2 transition-colors ${
+                index === 0
+                  ? 'border-accent-warning/50'
+                  : index === 1
+                  ? 'border-foreground-muted/30'
+                  : index === 2
+                  ? 'border-accent-warning/30'
+                  : 'border-transparent'
+              }`}
+            >
+              <div className="flex gap-4">
+                {/* Rank */}
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-background-tertiary flex items-center justify-center">
+                  <span className="text-xl font-bold text-foreground-secondary">#{index + 1}</span>
+                </div>
+
+                {/* Cover */}
+                <div className="flex-shrink-0">
+                  {entry.coverUrl ? (
+                    <Image
+                      src={entry.coverUrl}
+                      alt={entry.title}
+                      width={80}
+                      height={112}
+                      className="rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-20 h-28 bg-background-tertiary rounded-lg flex items-center justify-center">
+                      <svg className="w-8 h-8 text-foreground-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-foreground-primary truncate">{entry.title}</h3>
+                  <p className="text-sm text-foreground-muted mt-1">
+                    {t('translationTickets')}: {entry.score}
+                  </p>
+                </div>
+
+                {/* Action */}
+                <div className="flex-shrink-0 flex flex-col items-center justify-between">
+                  {isAuthenticated && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max={getTicketBalance()}
+                        value={voteAmount[entry.targetId] || 1}
+                        onChange={(e) =>
+                          setVoteAmount({
+                            ...voteAmount,
+                            [entry.targetId]: Math.max(1, parseInt(e.target.value) || 1),
+                          })
+                        }
+                        className="w-16 px-2 py-1 text-center input"
+                      />
+                      <button
+                        onClick={() => handleVote(entry.targetId)}
+                        disabled={voteMutation.isPending || getTicketBalance() < 1}
+                        className="btn-primary"
+                      >
+                        {voteMutation.isPending ? '...' : t('invest')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           ))
         )}

@@ -16,6 +16,7 @@ type Scheduler struct {
 	db                *sqlx.DB
 	ticketService     *service.TicketService
 	votingService     *service.VotingService
+	translationVotingService *service.TranslationVotingService
 	subscriptionService *service.SubscriptionService
 	logger            zerolog.Logger
 	
@@ -30,6 +31,7 @@ func NewScheduler(
 	db *sqlx.DB,
 	ticketService *service.TicketService,
 	votingService *service.VotingService,
+	translationVotingService *service.TranslationVotingService,
 	subscriptionService *service.SubscriptionService,
 	logger zerolog.Logger,
 ) *Scheduler {
@@ -37,6 +39,7 @@ func NewScheduler(
 		db:                  db,
 		ticketService:       ticketService,
 		votingService:       votingService,
+		translationVotingService: translationVotingService,
 		subscriptionService: subscriptionService,
 		logger:              logger.With().Str("component", "scheduler").Logger(),
 		stopCh:              make(chan struct{}),
@@ -52,10 +55,11 @@ func (s *Scheduler) Start(ctx context.Context) {
 	// weekly job initialized lazily in runner
 	
 	// Start job runners
-	s.wg.Add(5)
+	s.wg.Add(6)
 	go s.runDailyVoteJob(ctx)
 	go s.runWeeklyTicketJob(ctx)
 	go s.runVotingWinnerJob(ctx)
+	go s.runTranslationWinnerJob(ctx)
 	go s.runSubscriptionExpiryJob(ctx)
 	go s.runCleanupJob(ctx)
 }
@@ -161,6 +165,32 @@ func (s *Scheduler) runVotingWinnerJob(ctx context.Context) {
 			
 			if err := s.votingService.ProcessVotingWinner(ctx); err != nil {
 				s.logger.Error().Err(err).Msg("Voting winner job failed")
+			}
+		}
+	}
+}
+
+// runTranslationWinnerJob runs every 6 hours to pick translation voting winners
+func (s *Scheduler) runTranslationWinnerJob(ctx context.Context) {
+	defer s.wg.Done()
+
+	ticker := time.NewTicker(6 * time.Hour)
+	defer ticker.Stop()
+
+	s.logger.Info().Msg("Translation winner job started (every 6 hours)")
+
+	for {
+		select {
+		case <-s.stopCh:
+			return
+		case <-ticker.C:
+			s.logger.Info().Msg("Running translation winner selection job")
+			if s.translationVotingService == nil {
+				s.logger.Error().Msg("TranslationVotingService is not configured")
+				continue
+			}
+			if err := s.translationVotingService.ProcessTranslationWinner(ctx); err != nil {
+				s.logger.Error().Err(err).Msg("Translation winner job failed")
 			}
 		}
 	}
@@ -286,6 +316,27 @@ func (s *Scheduler) RunWeeklyTicketJobNow(ctx context.Context) error {
 // RunVotingWinnerJobNow runs the voting winner job immediately (for admin/testing)
 func (s *Scheduler) RunVotingWinnerJobNow(ctx context.Context) error {
 	return s.votingService.ProcessVotingWinner(ctx)
+}
+
+// RunTranslationWinnerJobNow runs the translation winner selection job immediately (for admin/testing)
+func (s *Scheduler) RunTranslationWinnerJobNow(ctx context.Context) error {
+	if s.translationVotingService == nil {
+		return nil
+	}
+	return s.translationVotingService.ProcessTranslationWinner(ctx)
+}
+
+// RunVotingWinnerJobNowForce is an admin/testing helper that can select a winner even if vote_score == 0.
+func (s *Scheduler) RunVotingWinnerJobNowForce(ctx context.Context) error {
+	return s.votingService.ProcessVotingWinnerForce(ctx)
+}
+
+// RunTranslationWinnerJobNowForce is an admin/testing helper that can select a winner even if tickets == 0.
+func (s *Scheduler) RunTranslationWinnerJobNowForce(ctx context.Context) error {
+	if s.translationVotingService == nil {
+		return nil
+	}
+	return s.translationVotingService.ProcessTranslationWinnerForce(ctx)
 }
 
 // GetDailyGrantStatus returns the status of the last daily vote grant

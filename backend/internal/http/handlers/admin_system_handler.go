@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"novels-backend/internal/domain/models"
+	"novels-backend/internal/http/middleware"
 	"novels-backend/internal/service"
 	"novels-backend/pkg/response"
 
@@ -75,10 +76,11 @@ func (h *AdminSystemHandler) UpdateSetting(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Get user ID from context (assuming middleware sets it)
-	userIDValue := r.Context().Value("userID")
-	userID, ok := userIDValue.(uuid.UUID)
-	if !ok {
-		userID = uuid.Nil // Fallback
+	userID := uuid.Nil
+	if uidStr := middleware.GetUserID(r.Context()); uidStr != "" {
+		if id, err := uuid.Parse(uidStr); err == nil {
+			userID = id
+		}
 	}
 
 	err := h.adminService.UpdateSetting(r.Context(), key, req.Value, userID)

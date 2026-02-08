@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"novels-backend/internal/config"
+	"novels-backend/internal/events"
 	"novels-backend/internal/http/handlers"
 	"novels-backend/internal/http/middleware"
 	"novels-backend/internal/jobs"
+	"novels-backend/internal/orchestrator"
+	"novels-backend/internal/orchestrator/importers"
 	"novels-backend/internal/repository"
 	"novels-backend/internal/service"
 
@@ -50,6 +53,7 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) (http.Handle
 	xpRepo := repository.NewXPRepository(db)
 	ticketRepo := repository.NewTicketRepository(db)
 	votingRepo := repository.NewVotingRepository(db)
+	translationVotingRepo := repository.NewTranslationVotingRepository(db)
 	subscriptionRepo := repository.NewSubscriptionRepository(db)
 	collectionRepo := repository.NewCollectionRepository(db)
 	newsRepo := repository.NewNewsRepository(db)
@@ -67,7 +71,9 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) (http.Handle
 	commentService := service.NewCommentService(commentRepo, xpService)
 	bookmarkService := service.NewBookmarkService(bookmarkRepo, novelRepo, xpService)
 	ticketService := service.NewTicketService(ticketRepo, subscriptionRepo, log)
-	votingService := service.NewVotingService(votingRepo, ticketRepo, log)
+	eventBus := events.NewBus()
+	votingService := service.NewVotingService(votingRepo, ticketRepo, eventBus, log)
+	translationVotingService := service.NewTranslationVotingService(translationVotingRepo, votingRepo, ticketRepo, eventBus, log)
 	subscriptionService := service.NewSubscriptionService(subscriptionRepo, ticketRepo, log)
 	collectionService := service.NewCollectionService(collectionRepo, novelRepo, userRepo)
 	newsService := service.NewNewsService(newsRepo, userRepo)
@@ -86,6 +92,7 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) (http.Handle
 	bookmarkHandler := handlers.NewBookmarkHandler(bookmarkService)
 	walletHandler := handlers.NewWalletHandler(ticketService, log)
 	votingHandler := handlers.NewVotingHandler(votingService, log)
+	translationVotingHandler := handlers.NewTranslationVotingHandler(translationVotingService, log)
 	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService, log)
 	collectionHandler := handlers.NewCollectionHandler(collectionService)
 	newsHandler := handlers.NewNewsHandler(newsService)
@@ -95,10 +102,41 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) (http.Handle
 	userAdminHandler := handlers.NewUserAdminHandler(userRepo)
 	commentAdminHandler := handlers.NewCommentAdminHandler(commentRepo)
 	adminSystemHandler := handlers.NewAdminSystemHandler(adminService)
+	uploadHandler := handlers.NewUploadHandler(cfg.UploadsDir)
+	importRunsRepo := repository.NewImportRunsRepository(db)
+	cookiesRepo := repository.NewImportRunCookiesRepository(db)
 
 	// Job scheduler (daily grants, etc.)
-	scheduler := jobs.NewScheduler(db, ticketService, votingService, subscriptionService, log)
+	scheduler := jobs.NewScheduler(db, ticketService, votingService, translationVotingService, subscriptionService, log)
 	jobsHandler := handlers.NewJobsHandler(scheduler, log)
+
+	// ============================================
+	// Orchestration: parent (voting) -> events -> child (importers/parsers)
+	// ============================================
+	impOrch := orchestrator.NewImportOrchestrator(
+		db,
+		votingRepo,
+		importRunsRepo,
+		cookiesRepo,
+		eventBus,
+		cfg.UploadsDir,
+		[]orchestrator.ProposalImporter{
+			importers.Shuba69Importer{},
+			importers.Kks101Importer{},
+			importers.TaduImporter{},
+		},
+		log,
+	)
+	impOrch.Register()
+
+	opsHandler := handlers.NewOpsHandler(scheduler, impOrch, importRunsRepo, cookiesRepo, translationVotingRepo, votingRepo, log)
+
+	// When proposal is released into a novel, translation voting should immediately
+	// move waiting_release -> translating (if it already won translation voting).
+	eventBus.Subscribe(events.EventProposalReleased, func(ctx context.Context, evt events.Event) error {
+		e := evt.(events.ProposalReleased)
+		return translationVotingService.OnProposalReleased(ctx, e.ProposalID, e.NovelID)
+	})
 
 	// Auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService, cfg.JWT)
@@ -149,6 +187,7 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) (http.Handle
 			r.Get("/voting/leaderboard", votingHandler.GetVotingLeaderboard)
 			r.Get("/voting/proposals", votingHandler.GetVotingProposals)
 			r.Get("/voting/stats", votingHandler.GetVotingStats)
+			r.Get("/translation/leaderboard", translationVotingHandler.GetTranslationLeaderboard)
 
 			// Публичные данные подписок
 			r.Get("/subscriptions/plans", subscriptionHandler.GetPlans)
@@ -226,6 +265,10 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) (http.Handle
 
 			// Голосование
 			r.Post("/votes", votingHandler.CastVote)
+			r.Post("/translation-votes", translationVotingHandler.CastTranslationVote)
+
+			// User uploads (e.g. proposal cover image)
+			r.Post("/upload", uploadHandler.Upload)
 
 			// Подписки пользователя
 			r.Get("/subscriptions/me", subscriptionHandler.GetMySubscription)
@@ -262,6 +305,7 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) (http.Handle
 				// Модерация предложек
 				r.Get("/proposals", votingHandler.GetPendingProposals)
 				r.Post("/proposals/{id}", votingHandler.ModerateProposal)
+				r.Post("/proposals/{id}/force-reject", votingHandler.ForceRejectProposal)
 
 				// Модерация wiki правок
 				r.Get("/edit-requests", wikiEditHandler.GetPendingEditRequests)
@@ -274,6 +318,7 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) (http.Handle
 		r.Group(func(r chi.Router) {
 			r.Use(authMiddleware.Authenticate)
 			r.Use(authMiddleware.RequireRole("admin"))
+			r.Use(middleware.AdminAuditMutations(adminService))
 
 			r.Route("/admin", func(r chi.Router) {
 				// Управление новеллами
@@ -362,6 +407,22 @@ func NewRouter(db *sqlx.DB, cfg *config.Config, log zerolog.Logger) (http.Handle
 				r.Post("/jobs/daily-votes/run", jobsHandler.RunDailyVotesNow)
 				r.Get("/jobs/weekly-tickets/status", jobsHandler.GetWeeklyTicketsStatus)
 				r.Post("/jobs/weekly-tickets/run", jobsHandler.RunWeeklyTicketsNow)
+
+				// Ops (admin): manual controls for winner selection & translation targets
+				r.Route("/ops", func(r chi.Router) {
+					r.Post("/jobs/voting-winner/run", opsHandler.RunVotingWinnerNow)
+					r.Post("/jobs/translation-winner/run", opsHandler.RunTranslationWinnerNow)
+					r.Get("/import-runs", opsHandler.ListImportRuns)
+					r.Post("/import-runs/{id}/cancel", opsHandler.CancelImportRun)
+					r.Post("/import-runs/{id}/pause", opsHandler.PauseImportRun)
+					r.Post("/import-runs/{id}/resume", opsHandler.ResumeImportRun)
+					r.Get("/import-runs/{id}/cookies", opsHandler.GetImportRunCookies)
+					r.Put("/import-runs/{id}/cookies", opsHandler.UpdateImportRunCookies)
+					r.Post("/import-runs/{id}/retry", opsHandler.RetryImportRun)
+					r.Post("/imports/run", opsHandler.RunImportNow)
+					r.Get("/translation-targets", opsHandler.ListTranslationTargets)
+					r.Post("/translation-targets/{id}/status", opsHandler.SetTranslationTargetStatus)
+				})
 			})
 		})
 	})

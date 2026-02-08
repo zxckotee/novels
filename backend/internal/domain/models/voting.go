@@ -95,7 +95,8 @@ type CreateProposalRequest struct {
 	OriginalLink string   `json:"originalLink" validate:"required,url"`
 	Title        string   `json:"title" validate:"required,min=2,max=200"`
 	AltTitles    []string `json:"altTitles,omitempty"`
-	Author       string   `json:"author" validate:"required"`
+	// Author is resolved later during import via parser-service; keep optional for backwards compatibility.
+	Author       string   `json:"author,omitempty"`
 	Description  string   `json:"description" validate:"required,min=100"`
 	CoverURL     *string  `json:"coverUrl,omitempty" validate:"omitempty,url"`
 	Genres       []string `json:"genres" validate:"required,min=1"`
@@ -107,6 +108,7 @@ type UpdateProposalRequest struct {
 	OriginalLink *string  `json:"originalLink,omitempty" validate:"omitempty,url"`
 	Title        *string  `json:"title,omitempty" validate:"omitempty,min=2,max=200"`
 	AltTitles    []string `json:"altTitles,omitempty"`
+	// Author is not editable via proposals; it is resolved during import.
 	Author       *string  `json:"author,omitempty"`
 	Description  *string  `json:"description,omitempty" validate:"omitempty,min=100"`
 	CoverURL     *string  `json:"coverUrl,omitempty" validate:"omitempty,url"`
@@ -123,7 +125,7 @@ type ModerateProposalRequest struct {
 // CastVoteRequest represents a request to cast a vote
 type CastVoteRequest struct {
 	ProposalID string     `json:"proposalId" validate:"required,uuid"`
-	TicketType TicketType `json:"ticketType" validate:"required,oneof=daily_vote translation_ticket"`
+	TicketType TicketType `json:"ticketType" validate:"required,oneof=daily_vote"`
 	Amount     int        `json:"amount" validate:"required,min=1"`
 }
 

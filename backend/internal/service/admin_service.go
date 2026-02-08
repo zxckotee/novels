@@ -70,6 +70,9 @@ func (s *AdminService) GetAuditLogs(ctx context.Context, filter models.AdminLogs
 	if err != nil {
 		return nil, fmt.Errorf("failed to get logs: %w", err)
 	}
+	if logs == nil {
+		logs = []models.AdminAuditLog{}
+	}
 
 	return &models.AdminLogsResponse{
 		Logs:       logs,

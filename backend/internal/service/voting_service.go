@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"novels-backend/internal/domain/models"
+	"novels-backend/internal/events"
 	"novels-backend/internal/repository"
 	"github.com/rs/zerolog"
 )
@@ -17,23 +20,27 @@ var (
 	ErrProposalNotFound    = errors.New("proposal not found")
 	ErrProposalNotVoting   = errors.New("proposal is not in voting status")
 	ErrCannotVoteOwnProposal = errors.New("cannot vote for own proposal")
+	ErrInvalidOriginalLink = errors.New("invalid original link")
 )
 
 type VotingService struct {
 	votingRepo *repository.VotingRepository
 	ticketRepo *repository.TicketRepository
 	logger     zerolog.Logger
+	events     *events.Bus
 }
 
 func NewVotingService(
 	votingRepo *repository.VotingRepository,
 	ticketRepo *repository.TicketRepository,
+	eventBus *events.Bus,
 	logger zerolog.Logger,
 ) *VotingService {
 	return &VotingService{
 		votingRepo: votingRepo,
 		ticketRepo: ticketRepo,
-		logger:     logger,
+		logger:     logger.With().Str("service", "voting").Logger(),
+		events:     eventBus,
 	}
 }
 
@@ -51,6 +58,10 @@ func (s *VotingService) CreateProposal(ctx context.Context, userID uuid.UUID, re
 	if balance < 1 {
 		return nil, ErrInsufficientTickets
 	}
+
+	if err := validateProposalOriginalLink(req.OriginalLink); err != nil {
+		return nil, err
+	}
 	
 	// Create proposal
 	proposal := &models.NovelProposal{
@@ -61,7 +72,8 @@ func (s *VotingService) CreateProposal(ctx context.Context, userID uuid.UUID, re
 		Status:       models.ProposalStatusModeration,
 		Title:        req.Title,
 		AltTitles:    req.AltTitles,
-		Author:       req.Author,
+		// Author is resolved later during import via parser-service.
+		Author:       "",
 		Description:  req.Description,
 		CoverURL:     req.CoverURL,
 		Genres:       req.Genres,
@@ -148,6 +160,9 @@ func (s *VotingService) UpdateProposal(ctx context.Context, id, userID uuid.UUID
 	
 	// Apply updates
 	if req.OriginalLink != nil {
+		if err := validateProposalOriginalLink(*req.OriginalLink); err != nil {
+			return nil, err
+		}
 		proposal.OriginalLink = *req.OriginalLink
 	}
 	if req.Title != nil {
@@ -178,6 +193,50 @@ func (s *VotingService) UpdateProposal(ctx context.Context, id, userID uuid.UUID
 	}
 	
 	return proposal, nil
+}
+
+func validateProposalOriginalLink(originalLink string) error {
+	raw := strings.TrimSpace(originalLink)
+	if raw == "" {
+		return fmt.Errorf("%w: original_link is required", ErrInvalidOriginalLink)
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return fmt.Errorf("%w: invalid URL", ErrInvalidOriginalLink)
+	}
+	host := strings.ToLower(u.Host)
+	
+	// Supported hosts (must match importers)
+	supportedHosts := []string{
+		"www.tadu.com",
+		"tadu.com",
+		"m.tadu.com",
+		"www.69shuba.com",
+		"69shuba.com",
+		"101kks.com",
+	}
+	
+	// Check if host matches any supported host or is a subdomain
+	isSupported := false
+	for _, supported := range supportedHosts {
+		if host == supported {
+			isSupported = true
+			break
+		}
+		// Check subdomains (e.g., *.tadu.com, *.69shuba.com, *.101kks.com)
+		if strings.HasSuffix(host, "."+supported) {
+			isSupported = true
+			break
+		}
+	}
+	
+	if !isSupported {
+		return fmt.Errorf("%w: unsupported source host %q (supported: www.tadu.com, www.69shuba.com, 101kks.com)", ErrInvalidOriginalLink, host)
+	}
+	return nil
 }
 
 // SubmitProposal submits a proposal for moderation
@@ -237,6 +296,19 @@ func (s *VotingService) ModerateProposal(ctx context.Context, id, moderatorID uu
 		Msg("Proposal moderated")
 	
 	return nil
+}
+
+// ForceRejectProposal rejects a proposal regardless of its current status.
+// Useful for removing broken/spam proposals from voting.
+func (s *VotingService) ForceRejectProposal(ctx context.Context, id, moderatorID uuid.UUID, rejectReason *string) error {
+	proposal, err := s.votingRepo.GetProposalByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if proposal == nil {
+		return ErrProposalNotFound
+	}
+	return s.votingRepo.UpdateProposalStatus(ctx, id, models.ProposalStatusRejected, &moderatorID, rejectReason)
 }
 
 // DeleteProposal deletes a proposal (only owner, only in draft status)
@@ -414,19 +486,34 @@ func (s *VotingService) GetVotingStats(ctx context.Context) (*models.VotingStats
 
 // ProcessVotingWinner picks the winner and updates status
 func (s *VotingService) ProcessVotingWinner(ctx context.Context) error {
+	return s.processVotingWinner(ctx, false)
+}
+
+// ProcessVotingWinnerForce is an admin/testing helper: it can select a winner even if vote_score == 0.
+func (s *VotingService) ProcessVotingWinnerForce(ctx context.Context) error {
+	return s.processVotingWinner(ctx, true)
+}
+
+func (s *VotingService) processVotingWinner(ctx context.Context, force bool) error {
 	// Get top proposal
 	topProposal, err := s.votingRepo.GetTopProposal(ctx)
 	if err != nil {
 		return fmt.Errorf("get top proposal: %w", err)
 	}
 	
-	if topProposal == nil || topProposal.VoteScore < 1 {
+	if topProposal == nil {
+		s.logger.Info().Msg("No proposals to process")
+		return nil
+	}
+
+	if !force && topProposal.VoteScore < 1 {
 		s.logger.Info().Msg("No proposals with votes to process")
 		return nil
 	}
 	
-	// Update status to translating
-	err = s.votingRepo.UpdateProposalStatus(ctx, topProposal.ID, models.ProposalStatusTranslating, nil, nil)
+	// Daily vote winner => selected for release/import.
+	// Translation is handled by a separate translation voting leaderboard.
+	err = s.votingRepo.UpdateProposalStatus(ctx, topProposal.ID, models.ProposalStatusAccepted, nil, nil)
 	if err != nil {
 		return fmt.Errorf("update proposal status: %w", err)
 	}
@@ -441,7 +528,12 @@ func (s *VotingService) ProcessVotingWinner(ctx context.Context) error {
 		Str("proposal_id", topProposal.ID.String()).
 		Str("title", topProposal.Title).
 		Int("vote_score", topProposal.VoteScore).
-		Msg("Voting winner selected")
+		Msg("Daily vote winner selected")
+
+	// Parent logic emits event; child (import orchestration/parsers) reacts to it.
+	if s.events != nil {
+		_ = s.events.Publish(ctx, events.DailyVoteWinnerSelected{ProposalID: topProposal.ID})
+	}
 	
 	return nil
 }

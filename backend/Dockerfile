@@ -28,6 +28,9 @@ COPY . .
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app/server ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app/import_69shuba ./cmd/import_69shuba
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app/import_fanqie ./cmd/import_fanqie
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app/import_101kks ./cmd/import_101kks
 
 # Production stage
 FROM alpine:3.19
@@ -39,6 +42,9 @@ RUN apk add --no-cache ca-certificates tzdata
 
 # Copy binary from builder
 COPY --from=builder /app/server .
+COPY --from=builder /app/import_69shuba .
+COPY --from=builder /app/import_fanqie .
+COPY --from=builder /app/import_101kks .
 COPY --from=builder /app/internal/database/migrations ./migrations
 
 # Uploads directory (for serving /uploads and storing uploaded files)

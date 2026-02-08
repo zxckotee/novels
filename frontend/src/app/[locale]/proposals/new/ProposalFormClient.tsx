@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -8,7 +8,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
-import { isPremium } from '@/store/auth';
+
+type ProposalSource = 'tadu' | '69shuba' | '101kks';
+
+const SOURCES: Array<{ id: ProposalSource; label: string; allowedHosts: string[] }> = [
+  { id: 'tadu', label: 'www.tadu.com', allowedHosts: ['www.tadu.com', 'tadu.com', 'm.tadu.com'] },
+  { id: '69shuba', label: 'www.69shuba.com', allowedHosts: ['www.69shuba.com', '69shuba.com'] },
+  { id: '101kks', label: '101kks.com', allowedHosts: ['101kks.com'] },
+];
 
 const GENRES = [
   'fantasy', 'romance', 'action', 'adventure', 'drama', 'comedy',
@@ -29,7 +36,6 @@ interface ProposalFormData {
   originalLink: string;
   title: string;
   altTitles: string[];
-  author: string;
   description: string;
   genres: string[];
   tags: string[];
@@ -55,12 +61,14 @@ export default function ProposalFormClient() {
   const locale = useLocale();
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
+
+  const [source, setSource] = useState<ProposalSource | ''>('');
+  const [originalLinkTouched, setOriginalLinkTouched] = useState(false);
   
   const [formData, setFormData] = useState<ProposalFormData>({
     originalLink: '',
     title: '',
     altTitles: [],
-    author: '',
     description: '',
     genres: [],
     tags: [],
@@ -68,6 +76,34 @@ export default function ProposalFormClient() {
   });
   const [altTitleInput, setAltTitleInput] = useState('');
   const [step, setStep] = useState(1);
+
+  const selectedSource = useMemo(() => SOURCES.find((s) => s.id === source), [source]);
+
+  const originalLinkValidation = useMemo(() => {
+    const raw = (formData.originalLink || '').trim();
+    if (!source) {
+      return { valid: false, message: t('newProposal.selectSourceFirst') };
+    }
+    if (!raw) {
+      return { valid: false, message: t('newProposal.originalLinkRequired') };
+    }
+    const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    let u: URL;
+    try {
+      u = new URL(withScheme);
+    } catch {
+      return { valid: false, message: t('newProposal.invalidOriginalLink') };
+    }
+    const host = u.host.toLowerCase();
+    const allowedHosts = selectedSource?.allowedHosts ?? [];
+    if (!allowedHosts.includes(host)) {
+      return {
+        valid: false,
+        message: t('newProposal.originalLinkHostError', { host: selectedSource?.label || '' }),
+      };
+    }
+    return { valid: true, message: '' };
+  }, [formData.originalLink, selectedSource?.allowedHosts, selectedSource?.label, source, t]);
 
   // Check wallet for Novel Request tickets
   const { data: wallet, isLoading: walletLoading } = useQuery<WalletInfo>({
@@ -149,8 +185,16 @@ export default function ProposalFormClient() {
   };
 
   const handleSubmit = () => {
+    if (!source) {
+      toast.error(t('newProposal.selectSourceFirst'));
+      return;
+    }
     if (!formData.originalLink || !formData.title || !formData.description) {
       toast.error(t('newProposal.fillRequired'));
+      return;
+    }
+    if (!originalLinkValidation.valid) {
+      toast.error(originalLinkValidation.message || t('newProposal.invalidOriginalLink'));
       return;
     }
     if (formData.genres.length === 0) {
@@ -160,7 +204,7 @@ export default function ProposalFormClient() {
     submitMutation.mutate(formData);
   };
 
-  const isStep1Valid = formData.originalLink && formData.title && formData.author;
+  const isStep1Valid = Boolean(source) && originalLinkValidation.valid && Boolean(formData.title);
   const isStep2Valid = formData.description.length >= 100;
   const isStep3Valid = formData.genres.length > 0;
 
@@ -216,34 +260,66 @@ export default function ProposalFormClient() {
       </div>
 
       {/* Progress Steps */}
-      <div className="flex items-center justify-between mb-8">
-        {[1, 2, 3, 4].map((s) => (
-          <div key={s} className="flex items-center">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                step >= s
-                  ? 'bg-accent-primary text-white'
-                  : 'bg-background-secondary text-foreground-muted'
-              }`}
-            >
-              {s}
-            </div>
-            {s < 4 && (
+      <div className="bg-background-secondary rounded-xl p-6 mb-8">
+        <div className="flex items-center w-full gap-2">
+          {[1, 2, 3, 4].map((s) => (
+            <React.Fragment key={s}>
               <div
-                className={`w-16 md:w-24 h-1 ${
-                  step > s ? 'bg-accent-primary' : 'bg-background-secondary'
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${
+                  step >= s
+                    ? 'bg-accent-primary text-white'
+                    : 'bg-background-tertiary text-foreground-muted'
                 }`}
-              />
-            )}
-          </div>
-        ))}
+              >
+                {s}
+              </div>
+              {s < 4 && (
+                <div
+                  className={`flex-1 h-1 ${
+                    step > s ? 'bg-accent-primary' : 'bg-background-tertiary'
+                  }`}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
       {/* Step 1: Basic Info */}
       {step === 1 && (
         <div className="bg-background-secondary rounded-xl p-6 space-y-6">
           <h2 className="text-xl font-semibold text-foreground-primary">{t('newProposal.step1Title')}</h2>
-          
+
+          <div>
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">
+              {t('newProposal.source')} *
+            </label>
+            <select
+              value={source}
+              onChange={(e) => {
+                const next = (e.target.value || '') as ProposalSource | '';
+                setSource(next);
+                // Reset link validation UX when switching sources
+                setOriginalLinkTouched(false);
+                // If link is present but doesn't match the new source, clear it to enforce correctness.
+                if (formData.originalLink.trim()) {
+                  setFormData({ ...formData, originalLink: '' });
+                }
+              }}
+              className="input w-full"
+            >
+              <option value="">{t('newProposal.sourcePlaceholder')}</option>
+              {SOURCES.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-foreground-muted mt-1">
+              Поддерживаются: www.tadu.com, www.69shuba.com, 101kks.com
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-foreground-secondary mb-2">
               {t('newProposal.originalLink')} *
@@ -251,11 +327,20 @@ export default function ProposalFormClient() {
             <input
               type="url"
               value={formData.originalLink}
-              onChange={(e) => setFormData({ ...formData, originalLink: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, originalLink: e.target.value });
+                setOriginalLinkTouched(true);
+              }}
+              onBlur={() => setOriginalLinkTouched(true)}
               placeholder="https://..."
               className="input w-full"
+              disabled={!source}
             />
-            <p className="text-xs text-foreground-muted mt-1">{t('newProposal.originalLinkHint')}</p>
+            {originalLinkTouched && !originalLinkValidation.valid ? (
+              <p className="text-xs text-red-400 mt-1">{originalLinkValidation.message}</p>
+            ) : (
+              <p className="text-xs text-foreground-muted mt-1">{t('newProposal.originalLinkHint')}</p>
+            )}
           </div>
 
           <div>
@@ -309,19 +394,6 @@ export default function ProposalFormClient() {
 
           <div>
             <label className="block text-sm font-medium text-foreground-secondary mb-2">
-              {t('newProposal.author')} *
-            </label>
-            <input
-              type="text"
-              value={formData.author}
-              onChange={(e) => setFormData({ ...formData, author: e.target.value })}
-              placeholder={t('newProposal.authorPlaceholder')}
-              className="input w-full"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground-secondary mb-2">
               {t('newProposal.coverUrl')}
             </label>
             <input
@@ -331,6 +403,20 @@ export default function ProposalFormClient() {
               placeholder="https://..."
               className="input w-full"
             />
+            {formData.coverUrl ? (
+              <div className="mt-3 w-full max-w-[180px] aspect-[3/4] bg-background-tertiary rounded-lg overflow-hidden border border-background-tertiary">
+                <img
+                  src={formData.coverUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/placeholder-cover.svg';
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
 
           <div className="flex justify-end">
@@ -465,7 +551,6 @@ export default function ProposalFormClient() {
               )}
               <div>
                 <h3 className="text-lg font-semibold text-foreground-primary">{formData.title}</h3>
-                <p className="text-foreground-secondary">{formData.author}</p>
                 <a href={formData.originalLink} target="_blank" rel="noopener noreferrer" className="text-accent-primary text-sm hover:underline">
                   {t('newProposal.viewOriginal')}
                 </a>

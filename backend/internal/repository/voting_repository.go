@@ -58,6 +58,23 @@ func (r *VotingRepository) CreateProposal(ctx context.Context, proposal *models.
 	return nil
 }
 
+// GetProposalByShortID finds a proposal by short ID (first 8 chars of UUID)
+func (r *VotingRepository) GetProposalByShortID(ctx context.Context, shortID string) (*uuid.UUID, error) {
+	if len(shortID) != 8 {
+		return nil, fmt.Errorf("short ID must be exactly 8 characters")
+	}
+	query := `SELECT id FROM novel_proposals WHERE id::text LIKE $1 || '%' LIMIT 1`
+	var foundID uuid.UUID
+	err := r.db.GetContext(ctx, &foundID, query, shortID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get proposal by short id: %w", err)
+	}
+	return &foundID, nil
+}
+
 // GetProposalByID returns a proposal by ID
 func (r *VotingRepository) GetProposalByID(ctx context.Context, id uuid.UUID) (*models.NovelProposal, error) {
 	query := `
@@ -491,6 +508,15 @@ func (r *VotingRepository) GetVotingStats(ctx context.Context) (*models.VotingSt
 	r.db.GetContext(ctx, &stats.ProposalsTranslated, "SELECT COUNT(*) FROM novel_proposals WHERE status IN ('accepted', 'translating')")
 	
 	return stats, nil
+}
+
+// SetProposalNovelID links a proposal to a released novel.
+func (r *VotingRepository) SetProposalNovelID(ctx context.Context, proposalID uuid.UUID, novelID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE novel_proposals SET novel_id = $2, updated_at = NOW() WHERE id = $1`, proposalID, novelID)
+	if err != nil {
+		return fmt.Errorf("set proposal novel_id: %w", err)
+	}
+	return nil
 }
 
 // BeginTx starts a new database transaction

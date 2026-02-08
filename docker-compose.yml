@@ -63,6 +63,7 @@ services:
         condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
+      - ./cookies:/app/cookies
       # Mount source code to /app/src to preserve Go installation in /app
       - ./backend:/app/src:cached
     # For development, run from source with hot reload
@@ -123,11 +124,27 @@ services:
     networks:
       - novels-network
 
+  parser-service:
+    build:
+      context: .
+      dockerfile: ./parser-service/Dockerfile
+    container_name: novels-parser-service
+    environment:
+      STORAGE_DIR: /data
+    ports:
+      - "8010:8000"
+    volumes:
+      - ./cookies:/data
+    restart: unless-stopped
+    networks:
+      - novels-network
+
 volumes:
   postgres_data:
   redis_data:
   node_modules_data:
   next_build_data:
+  # (optional) shared storage for tool containers
 
 networks:
   novels-network:

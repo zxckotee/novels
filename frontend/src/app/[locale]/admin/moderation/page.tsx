@@ -25,7 +25,6 @@ type TabType = 'reports' | 'proposals' | 'edits' | 'comments';
 interface Proposal {
   id: string;
   title: string;
-  author: string;
   description: string;
   coverUrl?: string;
   originalLink: string;
@@ -228,7 +227,6 @@ export default function AdminModerationPage() {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-semibold text-foreground-primary mb-1">{proposal.title}</h3>
-                        <p className="text-sm text-foreground-secondary mb-2">Автор: {proposal.author}</p>
                         <p className="text-sm text-foreground-muted line-clamp-2 mb-2">{proposal.description}</p>
                         
                         <div className="flex flex-wrap gap-2 mb-2">

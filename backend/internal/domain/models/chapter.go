@@ -122,6 +122,7 @@ type SaveProgressRequest struct {
 type ChaptersListResponse struct {
 	Chapters []ChapterListItem `json:"chapters"`
 	Novel    *NovelBrief       `json:"novel"`
+	Pagination Pagination      `json:"pagination"`
 }
 
 // NovelBrief краткая информация о новелле

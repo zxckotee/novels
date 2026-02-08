@@ -108,12 +108,20 @@ func (r *ChapterRepository) ListByNovel(ctx context.Context, novelSlug string, p
 
 // GetByID получает главу по ID с содержимым
 func (r *ChapterRepository) GetByID(ctx context.Context, id uuid.UUID, lang string) (*models.ChapterWithContent, error) {
+	// We want to be resilient: if requested translation is missing, fallback to any available content/lang.
+	// This prevents 404s for imported originals that only have source language content.
 	query := `
 		SELECT c.id, c.novel_id, c.number, c.slug, c.title, c.views, c.published_at, c.created_at, c.updated_at,
 		       cc.content, cc.word_count, cc.source,
 		       n.slug as novel_slug, nl.title as novel_title
 		FROM chapters c
-		JOIN chapter_contents cc ON c.id = cc.chapter_id AND cc.lang = $1
+		JOIN LATERAL (
+			SELECT content, word_count, source
+			FROM chapter_contents
+			WHERE chapter_id = c.id
+			ORDER BY (lang = $1) DESC, lang ASC
+			LIMIT 1
+		) cc ON TRUE
 		JOIN novels n ON c.novel_id = n.id
 		JOIN novel_localizations nl ON n.id = nl.novel_id AND nl.lang = $1
 		WHERE c.id = $2

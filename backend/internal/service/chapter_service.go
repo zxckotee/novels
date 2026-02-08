@@ -55,7 +55,7 @@ func (s *ChapterService) ListByNovel(ctx context.Context, novelSlug string, para
 		params.Order = "asc"
 	}
 
-	chapters, novel, _, err := s.chapterRepo.ListByNovel(ctx, novelSlug, params)
+	chapters, novel, total, err := s.chapterRepo.ListByNovel(ctx, novelSlug, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list chapters: %w", err)
 	}
@@ -64,9 +64,19 @@ func (s *ChapterService) ListByNovel(ctx context.Context, novelSlug string, para
 		return nil, ErrNovelNotFound
 	}
 
+	totalPages := 0
+	if params.Limit > 0 {
+		totalPages = (total + params.Limit - 1) / params.Limit
+	}
 	return &models.ChaptersListResponse{
 		Novel:    novel,
 		Chapters: chapters,
+		Pagination: models.Pagination{
+			Page:       params.Page,
+			Limit:      params.Limit,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	}, nil
 }
 

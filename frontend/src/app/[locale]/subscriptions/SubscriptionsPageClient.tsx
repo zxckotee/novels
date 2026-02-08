@@ -88,28 +88,48 @@ export default function SubscriptionsPageClient() {
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || t('subscribeError'));
+      const status = error?.response?.status;
+      const backendMessage = error?.response?.data?.error?.message;
+      // If user already has an active subscription, treat it as "ok" UX-wise:
+      // refresh state and show a friendly message instead of spamming 409 logs.
+      if (status === 409) {
+        queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+        toast.success(t('currentPlanButton'));
+        return;
+      }
+      toast.error(backendMessage || t('subscribeError'));
     },
   });
 
   // Cancel subscription mutation
   const cancelMutation = useMutation({
-    mutationFn: async () => {
-      const response = await api.post('/subscriptions/cancel');
+    mutationFn: async (subscriptionId: string) => {
+      const response = await api.post(`/subscriptions/${subscriptionId}/cancel`);
       return response.data;
     },
     onSuccess: () => {
       toast.success(t('cancelSuccess'));
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet'] });
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || t('cancelError'));
+      const backendMessage = error?.response?.data?.error?.message;
+      toast.error(backendMessage || t('cancelError'));
     },
   });
 
   const handleSubscribe = (planId: string) => {
     if (!isAuthenticated) {
       toast.error(t('loginRequired'));
+      return;
+    }
+    // Allow upgrades (e.g. premium -> vip), but block same-or-lower plans.
+    const tier: Record<string, number> = { free: 0, basic: 0, premium: 1, vip: 2 };
+    const current = subInfo?.hasActiveSubscription && subInfo.plan?.code ? subInfo.plan.code : 'free';
+    const currentTier = tier[current] ?? 0;
+    const targetTier = tier[planId] ?? 0;
+    if (subInfo?.hasActiveSubscription && targetTier <= currentTier) {
+      toast.error(t('currentPlanButton'));
       return;
     }
     subscribeMutation.mutate(planId);
@@ -132,6 +152,7 @@ export default function SubscriptionsPageClient() {
 
   // Determine current plan code
   const currentPlanCode = subInfo?.hasActiveSubscription && subInfo.plan?.code ? subInfo.plan.code : 'free';
+  const hasHigherPlanThanPremium = currentPlanCode === 'vip';
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -151,6 +172,16 @@ export default function SubscriptionsPageClient() {
               <p className="text-text-secondary">
                 {t('validUntil', { date: formatDate(subInfo.subscription.endsAt) })}
               </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => cancelMutation.mutate(subInfo.subscription!.id)}
+                disabled={cancelMutation.isPending}
+                className="btn-secondary"
+              >
+                {cancelMutation.isPending ? '...' : t('cancel')}
+              </button>
             </div>
           </div>
         </div>
@@ -285,16 +316,18 @@ export default function SubscriptionsPageClient() {
           </ul>
           <button
             onClick={() => handleSubscribe('premium')}
-            disabled={subscribeMutation.isPending || currentPlanCode === 'premium'}
+            disabled={subscribeMutation.isPending || currentPlanCode === 'premium' || currentPlanCode === 'vip'}
             className={`w-full py-3 rounded-lg transition-colors ${
-              currentPlanCode === 'premium'
+              currentPlanCode === 'premium' || currentPlanCode === 'vip'
                 ? 'bg-surface text-text-muted cursor-not-allowed'
                 : 'bg-primary text-white hover:bg-primary-hover disabled:opacity-50'
             }`}
           >
             {currentPlanCode === 'premium'
               ? t('currentPlanButton')
-              : subscribeMutation.isPending ? '...' : t('subscribe')}
+              : hasHigherPlanThanPremium
+                ? t('higherPlanActiveButton')
+                : subscribeMutation.isPending ? '...' : t('subscribe')}
           </button>
         </div>
 
@@ -362,7 +395,7 @@ export default function SubscriptionsPageClient() {
           >
             {currentPlanCode === 'vip'
               ? t('currentPlanButton')
-              : subscribeMutation.isPending ? '...' : t('subscribe')}
+              : subscribeMutation.isPending ? '...' : (currentPlanCode === 'premium' ? t('upgradeButton') : t('subscribe'))}
           </button>
         </div>
       </div>

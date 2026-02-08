@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { Star } from 'lucide-react';
 import { useLocale } from 'next-intl';
 
@@ -46,12 +45,15 @@ export function NovelCard({ novel, showRating = true, showChapter = true }: Nove
       <div className="relative aspect-cover rounded-card overflow-hidden bg-background-tertiary shadow-card group-hover:shadow-card-hover transition-shadow">
         {/* Cover Image */}
         {novel.coverUrl ? (
-          <Image
+          <img
             src={novel.coverUrl}
             alt={novel.title}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 180px"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            decoding="async"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = '/placeholder-cover.svg';
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-foreground-muted">

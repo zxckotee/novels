@@ -119,6 +119,8 @@
     "year": "yr",
     "popular": "Popular",
     "currentPlanButton": "Current Plan",
+    "higherPlanActiveButton": "You have a higher plan",
+    "upgradeButton": "Upgrade",
     "subscribe": "Subscribe",
     "subscribeSuccess": "Subscription activated!",
     "subscribeError": "Failed to subscribe",

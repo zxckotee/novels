@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -71,6 +72,10 @@ func (h *VotingHandler) CreateProposal(w http.ResponseWriter, r *http.Request) {
 	
 	proposal, err := h.votingService.CreateProposal(r.Context(), userID, req)
 	if err != nil {
+		if errors.Is(err, service.ErrInvalidOriginalLink) {
+			response.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+			return
+		}
 		if err == service.ErrInsufficientTickets {
 			response.Error(w, http.StatusPaymentRequired, "PAYMENT_REQUIRED", "Insufficient novel request tickets")
 			return
@@ -337,6 +342,47 @@ func (h *VotingHandler) ModerateProposal(w http.ResponseWriter, r *http.Request)
 	response.JSON(w, http.StatusOK, map[string]string{"message": "proposal moderated"})
 }
 
+// ForceRejectProposal rejects a proposal regardless of status (moderator/admin).
+// POST /api/v1/moderation/proposals/{id}/force-reject
+func (h *VotingHandler) ForceRejectProposal(w http.ResponseWriter, r *http.Request) {
+	moderatorIDStr := middleware.GetUserID(r.Context())
+	if moderatorIDStr == "" {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	moderatorID, err := uuid.Parse(moderatorIDStr)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user ID")
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid proposal ID")
+		return
+	}
+
+	var body struct {
+		Reason *string `json:"reason"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	err = h.votingService.ForceRejectProposal(r.Context(), id, moderatorID, body.Reason)
+	if err != nil {
+		if err == service.ErrProposalNotFound {
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "Proposal not found")
+			return
+		}
+		h.logger.Error().Err(err).Msg("Failed to force reject proposal")
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]string{"message": "proposal rejected"})
+}
+
 // GetPendingProposals returns proposals pending moderation
 // GET /api/v1/moderation/proposals
 func (h *VotingHandler) GetPendingProposals(w http.ResponseWriter, r *http.Request) {
@@ -397,8 +443,9 @@ func (h *VotingHandler) CastVote(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "amount must be positive")
 		return
 	}
-	if req.TicketType != models.TicketTypeDailyVote && req.TicketType != models.TicketTypeTranslationTicket {
-		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "ticket_type must be 'daily_vote' or 'translation_ticket'")
+	if req.TicketType != models.TicketTypeDailyVote {
+		// translation_ticket uses separate endpoint /translation-votes (separate leaderboard).
+		response.Error(w, http.StatusBadRequest, "BAD_REQUEST", "ticket_type must be 'daily_vote'")
 		return
 	}
 	

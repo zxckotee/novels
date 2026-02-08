@@ -129,6 +129,7 @@ export default function AdminDashboard() {
             <AdminLink href={`/${locale}/admin/news`} label="Новости" />
             <AdminLink href={`/${locale}/admin/settings`} label="Настройки" />
             <AdminLink href={`/${locale}/admin/logs`} label="Логи" />
+            <AdminLink href={`/${locale}/admin/ops`} label="Ops: джобы/очереди" />
           </nav>
         </div>
         

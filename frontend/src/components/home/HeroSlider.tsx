@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
 import { useLocale } from 'next-intl';
 
@@ -91,13 +90,15 @@ export function HeroSlider({ slides, isLoading }: { slides: HeroSlideItem[]; isL
           {/* Background Image with Blur */}
           <div className="absolute inset-0">
             {slide.coverUrl ? (
-              <Image
+              <img
                 src={slide.coverUrl}
                 alt=""
-                fill
-                sizes="100vw"
-                className="object-cover blur-lg scale-110"
-                priority={index === 0}
+                className="absolute inset-0 w-full h-full object-cover blur-lg scale-110"
+                loading={index === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/placeholder-hero-1.svg';
+                }}
               />
             ) : null}
             <div className="absolute inset-0 bg-gradient-to-r from-background-primary via-background-primary/90 to-transparent" />
@@ -132,13 +133,15 @@ export function HeroSlider({ slides, isLoading }: { slides: HeroSlideItem[]; isL
                   className="relative w-[180px] md:w-[220px] aspect-cover rounded-card overflow-hidden shadow-card-hover hover-lift"
                 >
                   {slide.coverUrl ? (
-                    <Image
+                    <img
                       src={slide.coverUrl}
                       alt={slide.title}
-                      fill
-                      sizes="(max-width: 768px) 180px, 220px"
-                      className="object-cover"
-                      priority={index === 0}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/placeholder-cover.svg';
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full bg-background-tertiary flex items-center justify-center">

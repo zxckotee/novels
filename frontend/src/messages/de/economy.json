@@ -119,6 +119,8 @@
     "year": "Jahr",
     "popular": "Beliebt",
     "currentPlanButton": "Aktueller Plan",
+    "higherPlanActiveButton": "Sie haben einen höheren Plan",
+    "upgradeButton": "Upgrade",
     "subscribe": "Abonnieren",
     "subscribeSuccess": "Abonnement aktiviert!",
     "subscribeError": "Abonnement konnte nicht aktiviert werden",

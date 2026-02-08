@@ -11,7 +11,6 @@ import { useAuth } from '@/hooks/useAuth';
 interface Proposal {
   id: string;
   title: string;
-  author: string;
   description: string;
   coverUrl?: string;
   genres: string[];
@@ -140,9 +139,6 @@ export default function ProposalsPageClient() {
                   <h3 className="text-lg font-semibold text-foreground-primary truncate">
                     {proposal.title}
                   </h3>
-                  <p className="text-sm text-foreground-secondary mb-2">
-                    Автор: {proposal.author}
-                  </p>
                   <p className="text-sm text-foreground-muted line-clamp-2 mb-2">
                     {proposal.description}
                   </p>

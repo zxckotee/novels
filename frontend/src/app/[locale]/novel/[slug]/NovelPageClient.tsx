@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { 
   Star, 
@@ -46,14 +45,44 @@ const STATUS_LABELS = {
 export default function NovelPageClient({ slug, locale }: NovelPageClientProps) {
   const t = useTranslations('novel');
   const [activeTab, setActiveTab] = useState<'description' | 'chapters' | 'comments'>('description');
+  const [chaptersPage, setChaptersPage] = useState(1);
+  const chaptersLimit = 50;
   const { isAuthenticated } = useAuthStore();
   
   const { data: novel, isLoading, error } = useNovel(slug, locale);
-  const { data: chaptersData } = useChapters(slug);
+  const { data: chaptersData } = useChapters(slug, chaptersPage, chaptersLimit);
   
   const chapters = chaptersData?.data || [];
-  const chaptersCount = chapters.length;
+  const chaptersTotal = chaptersData?.meta?.total ?? novel?.originalChaptersCount ?? chapters.length;
+  const chaptersTotalPages =
+    chaptersData?.meta?.totalPages ??
+    (chaptersTotal && chaptersLimit ? Math.max(1, Math.ceil(chaptersTotal / chaptersLimit)) : 1);
+  const chaptersCount = chaptersTotal;
   const firstChapterId = chapters[0]?.id;
+
+  const chapterPageItems = useMemo(() => {
+    const total = Math.max(1, chaptersTotalPages || 1);
+    const cur = Math.min(Math.max(1, chaptersPage), total);
+    const windowSize = 2;
+    const out: Array<number | '...'> = [];
+    const push = (v: number | '...') => out.push(v);
+
+    const pages: number[] = [];
+    pages.push(1);
+    for (let p = cur - windowSize; p <= cur + windowSize; p++) {
+      if (p > 1 && p < total) pages.push(p);
+    }
+    if (total > 1) pages.push(total);
+
+    const uniq = Array.from(new Set(pages)).sort((a, b) => a - b);
+    let prev = 0;
+    for (const p of uniq) {
+      if (prev && p - prev > 1) push('...');
+      push(p);
+      prev = p;
+    }
+    return out;
+  }, [chaptersPage, chaptersTotalPages]);
   
   if (isLoading) {
     return <NovelPageSkeleton />;
@@ -77,12 +106,15 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
         {/* Background */}
         <div className="absolute inset-0 h-[400px] overflow-hidden">
           {novel.coverUrl && (
-            <Image
+            <img
               src={novel.coverUrl}
               alt=""
-              fill
-              sizes="100vw"
-              className="object-cover blur-xl scale-110 opacity-30"
+              className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-30"
+              loading="eager"
+              decoding="async"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = '/placeholder-hero-1.svg';
+              }}
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background-primary/80 to-background-primary" />
@@ -95,13 +127,15 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
             <div className="shrink-0 mx-auto md:mx-0">
               <div className="relative w-[200px] aspect-cover rounded-card overflow-hidden shadow-card-hover">
                 {novel.coverUrl ? (
-                  <Image
+                  <img
                     src={novel.coverUrl}
                     alt={novel.title}
-                    fill
-                    sizes="200px"
-                    className="object-cover"
-                    priority
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/placeholder-cover.svg';
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full bg-background-tertiary flex items-center justify-center">
@@ -146,7 +180,7 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
                 )}
                 <span className="flex items-center gap-1">
                   <BookOpen className="w-4 h-4" />
-                  {chaptersCount} / {novel.originalChaptersCount} глав
+                  {chaptersTotal} / {novel.originalChaptersCount} глав
                 </span>
               </div>
               
@@ -240,7 +274,7 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
                 }`}
               >
                 {tab === 'description' && 'Описание'}
-                {tab === 'chapters' && `Главы (${chaptersCount})`}
+                {tab === 'chapters' && `Главы (${chaptersTotal})`}
                 {tab === 'comments' && 'Комментарии'}
               </button>
             ))}
@@ -315,6 +349,52 @@ export default function NovelPageClient({ slug, locale }: NovelPageClientProps) 
               <h2 className="text-xl font-semibold">Оглавление</h2>
               {/* Sort toggle could go here */}
             </div>
+
+            {/* Paginator (above the list) */}
+            {chaptersTotalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <div className="text-sm text-foreground-muted">
+                  Страница {chaptersPage} из {chaptersTotalPages}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    className="btn-secondary px-3 py-2 text-sm"
+                    disabled={chaptersPage <= 1}
+                    onClick={() => setChaptersPage((p) => Math.max(1, p - 1))}
+                  >
+                    Назад
+                  </button>
+
+                  {chapterPageItems.map((it, idx) =>
+                    it === '...' ? (
+                      <span key={`dots-${idx}`} className="px-2 text-foreground-muted">
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={it}
+                        className={`px-3 py-2 text-sm rounded ${
+                          it === chaptersPage
+                            ? 'bg-accent-primary text-white'
+                            : 'bg-background-secondary text-foreground-secondary hover:bg-background-hover'
+                        }`}
+                        onClick={() => setChaptersPage(it)}
+                      >
+                        {it}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    className="btn-secondary px-3 py-2 text-sm"
+                    disabled={chaptersPage >= chaptersTotalPages}
+                    onClick={() => setChaptersPage((p) => Math.min(chaptersTotalPages, p + 1))}
+                  >
+                    Вперёд
+                  </button>
+                </div>
+              </div>
+            )}
             
             {chapters.length === 0 ? (
               <p className="text-foreground-secondary">Главы еще не добавлены</p>

@@ -167,7 +167,8 @@ func (r *SubscriptionRepository) GetActiveSubscription(ctx context.Context, user
 		FROM subscriptions s
 		JOIN subscription_plans sp ON s.plan_id = sp.id
 		WHERE s.user_id = $1 AND s.status = 'active' AND s.ends_at > NOW()
-		ORDER BY s.ends_at DESC
+		-- If multiple actives exist due to a bug/race, prefer the highest tier plan.
+		ORDER BY COALESCE((sp.features->>'dailyVoteMultiplier')::int, 1) DESC, sp.price DESC, s.ends_at DESC, s.created_at DESC
 		LIMIT 1
 	`
 	
@@ -195,6 +196,59 @@ func (r *SubscriptionRepository) GetActiveSubscription(ctx context.Context, user
 	sub.Plan = &plan
 	
 	return &sub, nil
+}
+
+// ConsolidateActiveSubscriptions ensures the user has at most one active subscription.
+// It keeps the current best active subscription (by plan tier) and extends its ends_at
+// to the maximum ends_at among actives, then cancels the rest.
+func (r *SubscriptionRepository) ConsolidateActiveSubscriptions(ctx context.Context, userID uuid.UUID) error {
+	// Find the best active subscription id
+	var keepID uuid.UUID
+	err := r.db.GetContext(ctx, &keepID, `
+		SELECT s.id
+		FROM subscriptions s
+		JOIN subscription_plans sp ON sp.id = s.plan_id
+		WHERE s.user_id = $1 AND s.status = 'active' AND s.ends_at > NOW()
+		ORDER BY COALESCE((sp.features->>'dailyVoteMultiplier')::int, 1) DESC, sp.price DESC, s.ends_at DESC, s.created_at DESC
+		LIMIT 1
+	`, userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("select best active subscription: %w", err)
+	}
+
+	// Extend keep ends_at to max ends_at among actives (preserve remaining time)
+	_, err = r.db.ExecContext(ctx, `
+		UPDATE subscriptions
+		SET ends_at = (
+			SELECT MAX(ends_at) FROM subscriptions
+			WHERE user_id = $1 AND status = 'active' AND ends_at > NOW()
+		),
+		updated_at = NOW()
+		WHERE id = $2
+	`, userID, keepID)
+	if err != nil {
+		return fmt.Errorf("extend keep subscription: %w", err)
+	}
+
+	// Cancel others
+	_, _ = r.CancelOtherActiveSubscriptions(ctx, userID, keepID)
+	return nil
+}
+
+// GetMaxActiveEndsAtTx returns MAX(ends_at) for current active subscriptions inside a transaction.
+func (r *SubscriptionRepository) GetMaxActiveEndsAtTx(ctx context.Context, tx *sqlx.Tx, userID uuid.UUID) (*time.Time, error) {
+	var t *time.Time
+	if err := tx.GetContext(ctx, &t, `
+		SELECT MAX(ends_at)
+		FROM subscriptions
+		WHERE user_id = $1 AND status = 'active' AND ends_at > NOW()
+	`, userID); err != nil {
+		return nil, fmt.Errorf("get max active ends_at: %w", err)
+	}
+	return t, nil
 }
 
 // GetSubscriptionByID returns a subscription by ID
@@ -350,6 +404,8 @@ func (r *SubscriptionRepository) GetUserSubscriptionInfo(ctx context.Context, us
 	}
 	
 	if sub != nil {
+		// Safety net: if duplicates exist due to a previous race condition, consolidate.
+		_ = r.ConsolidateActiveSubscriptions(ctx, userID)
 		info.HasActiveSubscription = true
 		info.Subscription = sub
 		info.Plan = sub.Plan
@@ -484,4 +540,61 @@ func (r *SubscriptionRepository) GetSubscriptionStats(ctx context.Context) (map[
 // BeginTx starts a new database transaction
 func (r *SubscriptionRepository) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
 	return r.db.BeginTxx(ctx, nil)
+}
+
+// CancelOtherActiveSubscriptions cancels all active subscriptions for the user except keepID.
+// This is used as a safety net if duplicates already exist due to race conditions.
+func (r *SubscriptionRepository) CancelOtherActiveSubscriptions(ctx context.Context, userID uuid.UUID, keepID uuid.UUID) (int64, error) {
+	query := `
+		UPDATE subscriptions
+		SET status = 'canceled', canceled_at = NOW(), auto_renew = false, updated_at = NOW()
+		WHERE user_id = $1 AND status = 'active' AND ends_at > NOW() AND id <> $2
+	`
+	res, err := r.db.ExecContext(ctx, query, userID, keepID)
+	if err != nil {
+		return 0, fmt.Errorf("cancel other active subscriptions: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
+}
+
+// CancelAllActiveSubscriptionsTx cancels all currently active subscriptions for a user inside a tx.
+func (r *SubscriptionRepository) CancelAllActiveSubscriptionsTx(ctx context.Context, tx *sqlx.Tx, userID uuid.UUID) (int64, error) {
+	query := `
+		UPDATE subscriptions
+		SET status = 'canceled', canceled_at = NOW(), auto_renew = false, updated_at = NOW()
+		WHERE user_id = $1 AND status = 'active' AND ends_at > NOW()
+	`
+	res, err := tx.ExecContext(ctx, query, userID)
+	if err != nil {
+		return 0, fmt.Errorf("cancel active subscriptions: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
+}
+
+// CreateSubscriptionTx creates a new subscription within a transaction.
+func (r *SubscriptionRepository) CreateSubscriptionTx(ctx context.Context, tx *sqlx.Tx, sub *models.Subscription) error {
+	query := `
+		INSERT INTO subscriptions (
+			id, user_id, plan_id, status, starts_at, ends_at,
+			external_id, auto_renew, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`
+
+	if sub.ID == uuid.Nil {
+		sub.ID = uuid.New()
+	}
+	now := time.Now()
+	sub.CreatedAt = now
+	sub.UpdatedAt = now
+
+	_, err := tx.ExecContext(ctx, query,
+		sub.ID, sub.UserID, sub.PlanID, sub.Status, sub.StartsAt, sub.EndsAt,
+		sub.ExternalID, sub.AutoRenew, sub.CreatedAt, sub.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("create subscription: %w", err)
+	}
+	return nil
 }

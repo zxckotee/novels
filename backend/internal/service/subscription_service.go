@@ -48,15 +48,6 @@ func (s *SubscriptionService) GetPlan(ctx context.Context, id uuid.UUID) (*model
 
 // Subscribe creates a new subscription for a user
 func (s *SubscriptionService) Subscribe(ctx context.Context, userID uuid.UUID, req models.CreateSubscriptionRequest) (*models.Subscription, error) {
-	// Check if user already has active subscription
-	existingSub, err := s.subRepo.GetActiveSubscription(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("check existing subscription: %w", err)
-	}
-	if existingSub != nil {
-		return nil, ErrAlreadySubscribed
-	}
-	
 	// Get plan - try UUID first, then code
 	var plan *models.SubscriptionPlan
 	planID, err := uuid.Parse(req.PlanID)
@@ -91,6 +82,21 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, userID uuid.UUID, r
 		endsAt = now.AddDate(0, 1, 0)
 	}
 	
+	// Upgrade behavior: ensure only one active subscription exists.
+	// Use a transaction to avoid race conditions; the DB also has a unique partial index on (user_id) WHERE status='active'.
+	tx, err := s.subRepo.BeginTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Preserve remaining time if user already had an active subscription (or duplicates due to a bug):
+	// we'll extend the new subscription to the max ends_at among currently active subs.
+	maxExistingEndsAt, _ := s.subRepo.GetMaxActiveEndsAtTx(ctx, tx, userID)
+
+	// Cancel any existing active subs (if present).
+	_, _ = s.subRepo.CancelAllActiveSubscriptionsTx(ctx, tx, userID)
+
 	// Create subscription
 	subscription := &models.Subscription{
 		ID:        uuid.New(),
@@ -101,12 +107,20 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, userID uuid.UUID, r
 		EndsAt:    endsAt,
 		AutoRenew: req.AutoRenew,
 	}
+
+	if maxExistingEndsAt != nil && maxExistingEndsAt.After(subscription.EndsAt) {
+		subscription.EndsAt = *maxExistingEndsAt
+	}
 	
-	err = s.subRepo.CreateSubscription(ctx, subscription)
+	err = s.subRepo.CreateSubscriptionTx(ctx, tx, subscription)
 	if err != nil {
 		return nil, fmt.Errorf("create subscription: %w", err)
 	}
-	
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+
 	subscription.Plan = plan
 	
 	// Grant initial tickets

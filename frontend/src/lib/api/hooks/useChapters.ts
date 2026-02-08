@@ -24,6 +24,7 @@ type BackendNovelBrief = {
 type BackendChaptersListResponse = {
   chapters: BackendChapterListItem[];
   novel?: BackendNovelBrief | null;
+  pagination?: { page: number; limit: number; total: number; totalPages: number };
 };
 
 type BackendChapterWithContent = {
@@ -95,7 +96,7 @@ function mapBackendChapterWithContent(ch: BackendChapterWithContent): ChapterWit
 export const chapterKeys = {
   all: ['chapters'] as const,
   lists: () => [...chapterKeys.all, 'list'] as const,
-  list: (novelSlug: string) => [...chapterKeys.lists(), novelSlug] as const,
+  list: (novelSlug: string, page: number, limit: number) => [...chapterKeys.lists(), novelSlug, page, limit] as const,
   details: () => [...chapterKeys.all, 'detail'] as const,
   detail: (novelSlug: string, chapterId: string) => [...chapterKeys.details(), novelSlug, chapterId] as const,
 };
@@ -109,14 +110,27 @@ export const progressKeys = {
 // Fetch chapters list for a novel
 export function useChapters(novelSlug: string, page = 1, limit = 100) {
   return useQuery({
-    queryKey: chapterKeys.list(novelSlug),
+    queryKey: chapterKeys.list(novelSlug, page, limit),
     queryFn: async () => {
       const response = await api.get<BackendChaptersListResponse>(
         `/novels/${novelSlug}/chapters?page=${page}&limit=${limit}`
       );
-      const novelId = response.data?.novel?.id;
-      const chapters = (response.data?.chapters || []).map((c) => mapBackendChapterListItem(c, novelId));
-      return { data: chapters };
+      // Backend typically wraps payload as { data: T, meta: { timestamp } }.
+      // Some endpoints might be unwrapped; support both shapes defensively.
+      const payload: BackendChaptersListResponse =
+        // @ts-expect-error - defensive runtime shape support
+        (response as any)?.data?.data && typeof (response as any)?.data?.data === 'object'
+          ? // @ts-expect-error - defensive runtime shape support
+            (response as any).data.data
+          : response.data;
+
+      const novelId = payload?.novel?.id;
+      const chapters = (payload?.chapters || []).map((c) => mapBackendChapterListItem(c, novelId));
+      const p = payload?.pagination;
+      const meta = p
+        ? { page: p.page, limit: p.limit, total: p.total, totalPages: p.totalPages }
+        : undefined;
+      return { data: chapters, meta };
     },
     enabled: !!novelSlug,
     staleTime: 5 * 60 * 1000, // 5 minutes
